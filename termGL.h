@@ -2,29 +2,25 @@
 #include <unistd.h>
 #include <string.h>
 
-// pixels are 2 long since characters are twice as tall as they are wide
-#define PIXEL_CHAR	"\342\226\210"
-#define PIXEL		PIXEL_CHAR PIXEL_CHAR
-#define PIXEL_SIZE	6
-
-#define EMPTY_PIXEL	"  "
-#define EMPTY_PIXEL_SIZE	2
-
 #define ESC	"\33"
 
-#define SAVE_CURSOR	write(1, ESC "7", 2);
-#define RESTORE_CURSOR	write(1, ESC "8", 2);
-#define CLEAR		write(1, ESC "[J", 3);
+#define SAVE_CURSOR_ORIGIN	write(1, ESC "7", 2)
+#define CURSOR_TO_ORIGIN	write(1, ESC "8", 2)
+#define CLEAR_SCREEN		write(1, ESC "[J", 3)
 
-#define DELAY_MS	500
-#define DELAY_USEC	DELAY_MS * 1000
+#define SET_GRAPHIC_MAPPING	write(1, ESC "(0", 3)
+#define RESET_MAPPING		write(1, ESC "(B", 3)
 
 typedef struct {
-	char	*content;
-	size_t	size[2];
+	char	*pixels;
+	char	*display_buffer;
+	unsigned int	size[2];
 }		Image;
 
-Image	initImage(size_t size[2]);
-void	displayImage(Image *image);
-void	clearImage(Image *image);
+void	initDisplay(void);
+void	destroyDisplay(void);
+Image	createImage(unsigned int size[2]);
 void	destroyImage(Image *image);
+void	clearImage(Image *image);
+void	fillImageDisplayBuffer(Image *image);
+void	displayImage(Image *image);
