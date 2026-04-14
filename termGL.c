@@ -43,7 +43,9 @@ static void	fillFrameDisplayBuffer(Frame *frame)
 			const char value = frame->pixels[x + y * frame->size[0]];
 
 			frame->display_buffer[++buffer_i] = value;
+#if FORCE_MONOSPACE
 			frame->display_buffer[++buffer_i] = value;
+#endif
 		}
 		frame->display_buffer[++buffer_i] = '\n';
 	}

@@ -21,9 +21,9 @@ void	initDisplay(void);
 void	destroyDisplay(void);
 
 typedef struct {
-	char	*pixels;
-	char	*display_buffer;
-	unsigned int	size[2];
+	char	* const pixels;
+	char	* const display_buffer;
+	const unsigned int	size[2];
 }		Frame;
 
 /* Frame constructor and destructor */
@@ -32,6 +32,13 @@ void	destroyFrame(Frame *frame);
 
 void	displayFrame(Frame *frame);
 void	clearFrame(Frame *frame);
+
+/* FORCE_MONOSPACE will stretch every Frame's pixel by 2 horizontally so pixels appear as wide as they are tall.
+ * This will cause issues with pattern using characters other than PIXEL and HLINE_* since they will appear repeated
+ * Off by default. */
+# ifndef FORCE_MONOSPACE
+#  define FORCE_MONOSPACE	0
+# endif
 
 /* VT100 graphic mappings */
 # define PIXEL		'a'
