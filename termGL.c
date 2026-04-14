@@ -1,4 +1,4 @@
-#include "termGL.h"
+#include "include/termGL.h"
 
 void	initDisplay(void)
 {
