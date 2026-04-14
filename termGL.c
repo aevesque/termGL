@@ -8,52 +8,52 @@ void	initDisplay(void)
 
 void	destroyDisplay(void)
 {
-	RESET_MAPPING;
+	RESET_GRAPHIC_MAPPING;
 }
 
-Image	createImage(unsigned int size[2])
+Frame	createFrame(unsigned int size[2])
 {
-	return ((Image){
+	return ((Frame){
 			.pixels = malloc(size[0] * size[1]),
 			.display_buffer = malloc((size[0] * 2 + 1) * size[1]),
 			.size = {size[0], size[1]},
 			});
 }
 
-void	destroyImage(Image *image)
+void	destroyFrame(Frame *frame)
 {
-	free(image->pixels);
-	free(image->display_buffer);
+	free(frame->pixels);
+	free(frame->display_buffer);
 }
 
-void	clearImage(Image *image)
+void	clearFrame(Frame *frame)
 {
-	memset(image->pixels, 0, image->size[0] * image->size[1]);
+	memset(frame->pixels, 0, frame->size[0] * frame->size[1]);
 }
 
 /*  Characters are twice as tall as they are wide, even in graphic mode. To mitigate this, display_buffer is stretched by 2 in x */
-void	fillImageDisplayBuffer(Image *image)
+static void	fillFrameDisplayBuffer(Frame *frame)
 {
 	unsigned int buffer_i = -1;
 
-	for (unsigned int y = 0; y < image->size[1]; ++y)
+	for (unsigned int y = 0; y < frame->size[1]; ++y)
 	{
-		for (unsigned int x = 0; x < image->size[0]; ++x)
+		for (unsigned int x = 0; x < frame->size[0]; ++x)
 		{
-			const char value = image->pixels[x + y * image->size[0]];
+			const char value = frame->pixels[x + y * frame->size[0]];
 
-			image->display_buffer[++buffer_i] = value;
-			image->display_buffer[++buffer_i] = value;
+			frame->display_buffer[++buffer_i] = value;
+			frame->display_buffer[++buffer_i] = value;
 		}
-		image->display_buffer[++buffer_i] = '\n';
+		frame->display_buffer[++buffer_i] = '\n';
 	}
 }
 
-void	displayImage(Image *image)
+void	displayFrame(Frame *frame)
 {
-	CURSOR_TO_ORIGIN;
+	MOVE_CURSOR_TO_ORIGIN;
 	CLEAR_SCREEN;
-	fillImageDisplayBuffer(image);
-	write(1, image->display_buffer, (image->size[0] * 2 + 1) * image->size[1]);
-	memset(image->display_buffer, 0, (image->size[0] * 2 + 1) * image->size[1]);
+	fillFrameDisplayBuffer(frame);
+	write(1, frame->display_buffer, (frame->size[0] * 2 + 1) * frame->size[1]);
+	memset(frame->display_buffer, 0, (frame->size[0] * 2 + 1) * frame->size[1]);
 }
