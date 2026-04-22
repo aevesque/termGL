@@ -11,7 +11,7 @@ void	destroyDisplay(void)
 	RESET_GRAPHIC_MAPPING;
 }
 
-Frame	createFrame(unsigned int size[2])
+Frame	createFrame(const unsigned int size[2])
 {
 	return ((Frame){
 			.pixels = malloc(size[0] * size[1]),
@@ -59,8 +59,11 @@ void	displayFrame(Frame *frame)
 	memset(frame->display_buffer, 0, (frame->size[0] * 2 + 1) * frame->size[1]);
 }
 
-Image	strToImage(unsigned int size[2], char *str)
+Image	createImage(const unsigned int size[2], const char *str)
 {
+	if (!str)
+		return ((Image){ .size = {size[0], size[1]}});
+
 	return ((Image){
 			.content = strncpy(malloc(size[0] * size[1]), str, size[0] * size[1]),
 			.size = {size[0], size[1]},
@@ -72,10 +75,8 @@ void	destroyImage(Image *image)
 	free(image->content);
 }
 
-void	putImageToFrame(Image *image, Frame *frame, unsigned int x, unsigned int y)
+void	putImageToFrame(const Image *image, Frame *frame, const unsigned int pos[2])
 {
-	if (x + image->size[0] > frame->size[0] || y + image->size[1] > frame->size[1])
-		return ;
-	for (unsigned int j = 0; j < image->size[1]; ++j)
-		memcpy(&frame->pixels[(y + j) * frame->size[0] + x], &image->content[image->size[0] * j], image->size[0]);
+	for (unsigned int y = 0; y < image->size[1]; ++y)
+		memcpy(&frame->pixels[(pos[1] + y) * frame->size[0] + pos[0]], &image->content[image->size[0] * y], image->size[0]);
 }

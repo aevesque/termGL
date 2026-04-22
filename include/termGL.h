@@ -27,7 +27,7 @@ typedef struct {
 }		Frame;
 
 /* Frame constructor and destructor */
-Frame	createFrame(unsigned int size[2]);
+Frame	createFrame(const unsigned int size[2]);
 void	destroyFrame(Frame *frame);
 
 void	displayFrame(Frame *frame);
@@ -45,10 +45,10 @@ typedef struct {
 	const unsigned int size[2];
 }		Image;
 
-Image	strToImage(unsigned int size[2], char *str);
+Image	createImage(const unsigned int size[2], const char *str);
 void	destroyImage(Image *image);
 
-void	putImageToFrame(Image *image, Frame *frame, unsigned int x, unsigned int y);
+void	putImageToFrame(const Image *image, Frame *frame, const unsigned int pos[2]);
 
 /* VT100 graphic mappings */
 # define PIXEL		'a'
