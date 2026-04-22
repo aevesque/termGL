@@ -31,7 +31,6 @@ void	clearFrame(Frame *frame)
 	memset(frame->pixels, 0, frame->size[0] * frame->size[1]);
 }
 
-/*  Characters are twice as tall as they are wide, even in graphic mode. To mitigate this, display_buffer is stretched by 2 in x */
 static void	fillFrameDisplayBuffer(Frame *frame)
 {
 	unsigned int buffer_i = -1;
@@ -58,4 +57,25 @@ void	displayFrame(Frame *frame)
 	fillFrameDisplayBuffer(frame);
 	write(1, frame->display_buffer, (frame->size[0] * 2 + 1) * frame->size[1]);
 	memset(frame->display_buffer, 0, (frame->size[0] * 2 + 1) * frame->size[1]);
+}
+
+Image	strToImage(unsigned int size[2], char *str)
+{
+	return ((Image){
+			.content = strncpy(malloc(size[0] * size[1]), str, size[0] * size[1]),
+			.size = {size[0], size[1]},
+			});
+}
+
+void	destroyImage(Image *image)
+{
+	free(image->content);
+}
+
+void	putImageToFrame(Image *image, Frame *frame, unsigned int x, unsigned int y)
+{
+	if (x + image->size[0] > frame->size[0] || y + image->size[1] > frame->size[1])
+		return ;
+	for (unsigned int j = 0; j < image->size[1]; ++j)
+		memcpy(&frame->pixels[(y + j) * frame->size[0] + x], &image->content[image->size[0] * j], image->size[0]);
 }

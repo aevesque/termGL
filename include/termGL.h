@@ -40,6 +40,16 @@ void	clearFrame(Frame *frame);
 #  define FORCE_MONOSPACE	0
 # endif
 
+typedef struct {
+	char	* const content;
+	const unsigned int size[2];
+}		Image;
+
+Image	strToImage(unsigned int size[2], char *str);
+void	destroyImage(Image *image);
+
+void	putImageToFrame(Image *image, Frame *frame, unsigned int x, unsigned int y);
+
 /* VT100 graphic mappings */
 # define PIXEL		'a'
 # define DOT		'~'
