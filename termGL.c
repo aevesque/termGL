@@ -2,28 +2,33 @@
 
 void	initDisplay(void)
 {
-	SET_GRAPHIC_MAPPING;
-	SAVE_CURSOR_ORIGIN;
+	write(1, SCROLL_UP, sizeof(SCROLL_UP) - 1);
 }
 
-void	destroyDisplay(void)
+Frame	createFrame(const size_t size[2])
 {
-	RESET_GRAPHIC_MAPPING;
-}
+#if FORCE_MONOSPACE
+	const size_t	display_buffer_size = (size[0] * 2 + 1) * size[1] + DISPLAY_OVERHEAD_SIZE;
+#else
+	const size_t	display_buffer_size = (size[0] + 1) * size[1] + DISPLAY_OVERHEAD_SIZE;
+#endif
+	char *display_buffer = malloc(display_buffer_size);
 
-Frame	createFrame(const unsigned int size[2])
-{
+	strcpy(display_buffer, DISPLAY_OVERHEAD_START);
+	strcpy(display_buffer + display_buffer_size - DISPLAY_OVERHEAD_END_SIZE, DISPLAY_OVERHEAD_END);
+
 	return ((Frame){
 			.pixels = malloc(size[0] * size[1]),
-			.display_buffer = malloc((size[0] * 2 + 1) * size[1]),
 			.size = {size[0], size[1]},
+			.display_buffer = display_buffer + DISPLAY_OVERHEAD_START_SIZE,
+			.display_buffer_size = display_buffer_size,
 			});
 }
 
 void	destroyFrame(Frame *frame)
 {
 	free(frame->pixels);
-	free(frame->display_buffer);
+	free(frame->display_buffer - DISPLAY_OVERHEAD_START_SIZE);
 }
 
 void	clearFrame(Frame *frame)
@@ -52,14 +57,12 @@ static void	fillFrameDisplayBuffer(Frame *frame)
 
 void	displayFrame(Frame *frame)
 {
-	MOVE_CURSOR_TO_ORIGIN;
-	CLEAR_SCREEN;
 	fillFrameDisplayBuffer(frame);
-	write(1, frame->display_buffer, (frame->size[0] * 2 + 1) * frame->size[1]);
-	memset(frame->display_buffer, 0, (frame->size[0] * 2 + 1) * frame->size[1]);
+	write(1, frame->display_buffer - DISPLAY_OVERHEAD_START_SIZE, frame->display_buffer_size);
+	memset(frame->display_buffer, 0, frame->display_buffer_size - DISPLAY_OVERHEAD_SIZE);
 }
 
-Image	createImage(const unsigned int size[2], const char *str)
+Image	createImage(const size_t size[2], const char *str)
 {
 	if (!str)
 		return ((Image){ .size = {size[0], size[1]}});
@@ -75,7 +78,7 @@ void	destroyImage(Image *image)
 	free(image->content);
 }
 
-void	putImageToFrame(const Image *image, Frame *frame, const unsigned int pos[2])
+void	putImageToFrame(const Image *image, Frame *frame, const size_t pos[2])
 {
 	for (unsigned int y = 0; y < image->size[1]; ++y)
 		memcpy(&frame->pixels[(pos[1] + y) * frame->size[0] + pos[0]], &image->content[image->size[0] * y], image->size[0]);
