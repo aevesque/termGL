@@ -9,32 +9,34 @@
 /* CSI is used to start some ANSI console codes ; see man 4 console_codes */
 # define CSI	"\033["
 
-# define SCROLL_UP		CSI "2J"
-
+# define SCROLL_DOWN		CSI "2J"
 # define CURSOR_TO_ORIGIN	CSI "H"
 # define ERASE_DISPLAY		CSI "J"
 # define RESET_COLOR		CSI "0m"
 
-# define DISPLAY_OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
-# define DISPLAY_OVERHEAD_START_SIZE	(sizeof(DISPLAY_OVERHEAD_START) - 1)
+# define INIT_DISPLAY_SEQ	SCROLL_DOWN
+# define INIT_DISPLAY_SEQ_SIZE	(sizeof(INIT_DISPLAY_SEQ) - 1)
 
-# define DISPLAY_OVERHEAD_END		RESET_COLOR
-# define DISPLAY_OVERHEAD_END_SIZE	(sizeof(DISPLAY_OVERHEAD_END) - 1)
+# define OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
+# define OVERHEAD_START_SIZE	(sizeof(OVERHEAD_START) - 1)
 
-# define DISPLAY_OVERHEAD_SIZE	(DISPLAY_OVERHEAD_START_SIZE + DISPLAY_OVERHEAD_END_SIZE)
+# define OVERHEAD_END		RESET_COLOR
+# define OVERHEAD_END_SIZE	(sizeof(OVERHEAD_END) - 1)
 
+# define OVERHEAD_SIZE	(OVERHEAD_START_SIZE + OVERHEAD_END_SIZE)
 
 # define PIXEL_STR	"▄"	//unicode lower half block, 0xE2 0x96 0x84
+# define PIXEL_SIZE	(sizeof(PIXEL_STR) - 1)
 
-# define EVEN_ROW_COLOR		"48;2;"
-# define ODD_ROW_COLOR		"38;2;"
+# define TOP_ROW_COLOR		"48;2;"
+# define BOT_ROW_COLOR		"38;2;"
 # define COLOR_SEQ_END		"m"
 
-# define DOUBLE_COLOR_SEQ(rgb1, rgb2)	CSI EVEN_ROW_COLOR rgb1 ";" ODD_ROW_COLOR rgb2 COLOR_SEQ_END
-# define DOUBLE_COLOR_SEQ_MAX_SIZE	(sizeof(DOUBLE_COLOR_SEQ("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
+# define FULL_ROW_COLOR_SEQ(rgb1, rgb2)	CSI TOP_ROW_COLOR rgb1 ";" BOT_ROW_COLOR rgb2 COLOR_SEQ_END
+# define FULL_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(FULL_ROW_COLOR_SEQ("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
 
-# define SINGLE_COLOR_SEQ(rgb)		DOUBLE_COLOR_SEQ(rgb, "0;0;0")
-# define SINGLE_COLOR_SEQ_MAX_SIZE	(sizeof(SINGLE_COLOR_SEQ("rrr;ggg;bbb")) - 1)
+# define HALF_ROW_COLOR_SEQ(rgb)		FULL_ROW_COLOR_SEQ(rgb, "0;0;0")
+# define HALF_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(HALF_ROW_COLOR_SEQ("rrr;ggg;bbb")) - 1)
 
 # define RGB_R_VALUE(n)		(((0xFF << 16) & n) >> 16)
 # define RGB_G_VALUE(n)		(((0xFF << 8) & n) >> 8)
@@ -46,13 +48,14 @@
 # define WHITE		0xFFFFFF
 # define BLACK		0x000000
 
+
 void	initDisplay(void);
 
 typedef struct {
 	int	* const pixels;
 	const size_t	size[2];
-	char	* const display_buffer;
-	const size_t	display_buffer_size;
+	char	* const buffer;
+	const size_t	buffer_size;
 }		Frame;
 
 Frame	createFrame(const size_t size[2]);
@@ -62,15 +65,19 @@ void	displayFrame(Frame *frame);
 void	clearFrame(Frame *frame);
 
 typedef struct {
-	int	* const pixels;
-	const size_t size[2];
+	int	* const	pixels;
+	const size_t	size[2];
 }		Image;
 
 Image	createImage(const size_t size[2], const int *src);
 void	destroyImage(Image *image);
 
-void	putImageToFrame(const Image *image, Frame *frame, const size_t pos[2]);
+void	displayImage(const Image *image, Frame *target, const size_t pos[2]);
 
+/* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty */
+Image	strToNewImage(const char *str, const size_t size[2], const int color);
+
+/* Works with both Frame and Image */
 # define GET_PIXEL(x, y, src)	src->pixels[(x) + (y) * src->size[0]]
 # define SET_PIXEL(value, x, y, dest)	GET_PIXEL(x, y, dest) = value
 
