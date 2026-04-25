@@ -58,7 +58,7 @@ typedef struct {
 	const size_t	buffer_size;
 }		Frame;
 
-Frame	createFrame(const size_t width, const size_t height);
+Frame	*createFrame(const size_t width, const size_t height);
 void	destroyFrame(Frame *frame);
 
 void	displayFrame(Frame *frame);
@@ -69,13 +69,13 @@ typedef struct {
 	const size_t	size[2];
 }		Image;
 
-Image	createImage(const size_t width, const size_t height, const int *src);
+Image	*createImage(const size_t width, const size_t height, const int *src);
 void	destroyImage(Image *image);
 
 void	putImageInFrame(const Image *image, Frame *target, const size_t x, const size_t y);
 
 /* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty */
-Image	strToNewImage(const char *str, const size_t width, const size_t height, const int color);
+Image	*strToNewImage(const char *str, const size_t width, const size_t height, const int color);
 
 /* Works with both Frame and Image */
 # define GET_PIXEL(x, y, src)	src->pixels[(x) + (y) * src->size[0]]

@@ -5,7 +5,7 @@ void	initDisplay(void)
 	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
 }
 
-Frame	createFrame(const size_t width, const size_t height)
+Frame	*createFrame(const size_t width, const size_t height)
 {
 	const size_t	full_line_size = (FULL_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
 	const size_t	half_line_size = (HALF_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
@@ -16,18 +16,21 @@ Frame	createFrame(const size_t width, const size_t height)
 	strcpy(buffer, OVERHEAD_START);
 	strncpy(buffer + buffer_size - OVERHEAD_END_SIZE, OVERHEAD_END, OVERHEAD_END_SIZE);
 
-	return ((Frame){
-			.pixels = calloc(width * height, sizeof(int)),
-			.size = {width, height},
-			.buffer = buffer + OVERHEAD_START_SIZE,
-			.buffer_size = buffer_size,
-			});
+	Frame	*ret = malloc(sizeof(Frame));
+	memcpy(ret, &((Frame) {
+		.pixels = calloc(width * height, sizeof(int)),
+		.size = {width, height},
+		.buffer = buffer + OVERHEAD_START_SIZE,
+		.buffer_size = buffer_size,
+	}), sizeof(Frame));
+	return (ret);
 }
 
 void	destroyFrame(Frame *frame)
 {
 	free(frame->pixels);
 	free(frame->buffer - OVERHEAD_START_SIZE);
+	free(frame);
 }
 
 void	clearFrame(Frame *frame)
@@ -74,22 +77,25 @@ void	displayFrame(Frame *frame)
 	write(1, frame->buffer - OVERHEAD_START_SIZE, frame->buffer_size);
 }
 
-Image	createImage(const size_t width, const size_t height, const int *src)
+Image	*createImage(const size_t width, const size_t height, const int *src)
 {
 	int	*pixels = calloc(width * height, sizeof(int));
 
 	if (src)
 		memcpy(pixels, src, width * height * sizeof(int));
 
-	return ((Image){
-			.pixels = pixels,
-			.size = {width, height},
-			});
+	Image	*ret = malloc(sizeof(Image));
+	memcpy(ret, &((Image){
+		.pixels = pixels,
+		.size = {width, height},
+	}), sizeof(Image));
+	return (ret);
 }
 
 void	destroyImage(Image *image)
 {
 	free(image->pixels);
+	free(image);
 }
 
 void	putImageInFrame(const Image *image, Frame *target, const size_t x, const size_t y)
@@ -98,7 +104,7 @@ void	putImageInFrame(const Image *image, Frame *target, const size_t x, const si
 		memcpy(&target->pixels[(y + j) * target->size[0] + x], &image->pixels[image->size[0] * j], image->size[0] * sizeof(int));
 }
 
-Image	strToNewImage(const char *str, const size_t width, const size_t height, const int color)
+Image	*strToNewImage(const char *str, const size_t width, const size_t height, const int color)
 {
 	int	*pixels = calloc(width * height, sizeof(int));
 	int	i = -1;
@@ -107,8 +113,10 @@ Image	strToNewImage(const char *str, const size_t width, const size_t height, co
 		if (str[i] != ' ' && str[i] != '0')
 			pixels[i] = color;
 
-	return ((Image){
-			.pixels = pixels,
-			.size = {width, height},
-			});
+	Image	*ret = malloc(sizeof(Image));
+	memcpy(ret, &((Image){
+		.pixels = pixels,
+		.size = {width, height},
+	}), sizeof(Image));
+	return (ret);
 }
