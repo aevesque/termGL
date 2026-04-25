@@ -26,7 +26,7 @@ Every pixel of a frame gets drawn.
 
 #### Images
 
-Images are reusable "sub-frames" to be copied into Frames at specific, user-specified coordinates using `displayImage()`.
+Images are reusable "sub-frames" to be copied into Frames at specific, user-specified coordinates using `putImageInFrame()`.
 
 Same as Frame, they contain a `pixels` array.
 
