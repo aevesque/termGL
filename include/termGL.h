@@ -6,7 +6,7 @@
 #ifndef TERM_GL
 # define TERM_GL
 
-/* CSI is used to start some ANSI console codes ; see man 4 console_codes */
+/* CSI is used to start some ANSI console codes ; see console_codes(4) */
 # define CSI	"\033["
 
 # define SCROLL_DOWN		CSI "2J"
@@ -38,9 +38,7 @@
 # define HALF_ROW_COLOR_SEQ(rgb)		FULL_ROW_COLOR_SEQ(rgb, "0;0;0")
 # define HALF_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(HALF_ROW_COLOR_SEQ("rrr;ggg;bbb")) - 1)
 
-# define RGB_R_VALUE(n)		(((0xFF << 16) & n) >> 16)
-# define RGB_G_VALUE(n)		(((0xFF << 8) & n) >> 8)
-# define RGB_B_VALUE(n)		(0xFF & n)
+# define Pixel_t	int
 
 # define RED		0xFF0000
 # define GREEN		0x00FF00
@@ -48,37 +46,41 @@
 # define WHITE		0xFFFFFF
 # define BLACK		0x000000
 
+# define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
 
-void	initDisplay(void);
-
+/* Fixed-size 2d pixel buffer. */
 typedef struct {
-	int	* const pixels;
-	const size_t	size[2];
-	char	* const buffer;
-	const size_t	buffer_size;
-}		Frame;
-
-Frame	*createFrame(const size_t width, const size_t height);
-void	destroyFrame(Frame *frame);
-
-void	displayFrame(Frame *frame);
-void	clearFrame(Frame *frame);
-
-typedef struct {
-	int	* const	pixels;
+	Pixel_t	* const	pixels;
 	const size_t	size[2];
 }		Image;
 
-Image	*createImage(const size_t width, const size_t height, const int *src);
-void	destroyImage(Image *image);
+/* Special kind of Image containing the pixels to be displayed on screen.
+  Castable to Image.
+  Upon calling renderWindow(), the window's content get translated and put in buffer before being sent to stdout.
+  */
+typedef struct {
+	Image	content;
+	char	* const buffer;
+	const size_t	buffer_size;
+}		Window;
 
-void	putImageInFrame(const Image *image, Frame *target, const size_t x, const size_t y);
+void	initDisplay(void);
 
-/* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty */
-Image	*strToNewImage(const char *str, const size_t width, const size_t height, const int color);
+Window	initWindow(const size_t width, const size_t height);
+void	destroyWindow(Window *win);
 
-/* Works with both Frame and Image */
-# define GET_PIXEL(x, y, src)	src->pixels[(x) + (y) * src->size[0]]
-# define SET_PIXEL(value, x, y, dest)	GET_PIXEL(x, y, dest) = value
+void	renderWindow(Window *win);
+
+Image	initImage(const size_t width, const size_t height);
+void	destroyImage(Image *img);
+
+Pixel_t	getPixel(const size_t x, const size_t y, Image *img);
+void	setPixel(const size_t x, const size_t y, Pixel_t value, Image *img);
+
+void	clearImage(Image *img);
+void	imageToWindow(const Image *img, Window *win, const size_t x, const size_t y);
+
+/* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty -> black */
+Image	strToImage(const char *str, const size_t width, const size_t height, const Pixel_t color);
 
 #endif

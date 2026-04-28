@@ -5,7 +5,7 @@ void	initDisplay(void)
 	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
 }
 
-Frame	*createFrame(const size_t width, const size_t height)
+Window	initWindow(const size_t width, const size_t height)
 {
 	const size_t	full_line_size = (FULL_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
 	const size_t	half_line_size = (HALF_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
@@ -16,107 +16,105 @@ Frame	*createFrame(const size_t width, const size_t height)
 	strcpy(buffer, OVERHEAD_START);
 	strncpy(buffer + buffer_size - OVERHEAD_END_SIZE, OVERHEAD_END, OVERHEAD_END_SIZE);
 
-	Frame	*ret = malloc(sizeof(Frame));
-	memcpy(ret, &((Frame) {
-		.pixels = calloc(width * height, sizeof(int)),
-		.size = {width, height},
+	return ((Window) {
+		.content = (Image) {
+			.pixels = calloc(width * height, sizeof(Pixel_t)),
+			.size = {width, height},
+		},
 		.buffer = buffer + OVERHEAD_START_SIZE,
 		.buffer_size = buffer_size,
-	}), sizeof(Frame));
-	return (ret);
+	});
 }
 
-void	destroyFrame(Frame *frame)
+void	destroyWindow(Window *win)
 {
-	free(frame->pixels);
-	free(frame->buffer - OVERHEAD_START_SIZE);
-	free(frame);
+	free(win->content.pixels);
+	free(win->buffer - OVERHEAD_START_SIZE);
 }
 
-void	clearFrame(Frame *frame)
-{
-	memset(frame->pixels, 0, frame->size[0] * frame->size[1] * sizeof(int));
-}
-
-static void	fillFrameBuffer(Frame *frame)
+static void	fillWindowBuffer(Window *win)
 {
 	size_t i = -1;
 
-	for (size_t y = 0; y < frame->size[1] - 1; y += 2)
+	for (size_t y = 0; y < win->content.size[1] - 1; y += 2)
 	{
-		for (size_t x = 0; x < frame->size[0]; ++x)
+		for (size_t x = 0; x < win->content.size[0]; ++x)
 		{
-			const int	top_pixel = GET_PIXEL(x, y, frame);
-			const int	bot_pixel = GET_PIXEL(x, y + 1, frame);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)win);
+			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)win);
 
-			i += sprintf(&frame->buffer[++i], FULL_ROW_COLOR_SEQ("%d;%d;%d", "%d;%d;%d") PIXEL_STR,
-					RGB_R_VALUE(top_pixel), RGB_G_VALUE(top_pixel), RGB_B_VALUE(top_pixel),
-					RGB_R_VALUE(bot_pixel), RGB_G_VALUE(bot_pixel), RGB_B_VALUE(bot_pixel)) - 1; //-1 since sprintf appends NULL
+			i += sprintf(&win->buffer[++i], FULL_ROW_COLOR_SEQ("%d;%d;%d", "%d;%d;%d") PIXEL_STR,
+					PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
 		}
-		frame->buffer[++i] = '\n';
+		win->buffer[++i] = '\n';
 	}
-	if (frame->size[1] % 2)
+	if (win->content.size[1] % 2)
 	{
-		const size_t	y = frame->size[1] - 1;
+		const size_t	y = win->content.size[1] - 1;
 
-		for (size_t x = 0; x < frame->size[0]; ++x)
+		for (size_t x = 0; x < win->content.size[0]; ++x)
 		{
-			const int	top_pixel = GET_PIXEL(x, y, frame);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)win);
 
-			i += sprintf(&frame->buffer[++i], HALF_ROW_COLOR_SEQ("%d;%d;%d") PIXEL_STR,
-					RGB_R_VALUE(top_pixel), RGB_G_VALUE(top_pixel), RGB_B_VALUE(top_pixel)) - 1;
+			i += sprintf(&win->buffer[++i], HALF_ROW_COLOR_SEQ("%d;%d;%d") PIXEL_STR,
+					PIXEL_TO_RGB(top_pixel));
 		}
-		frame->buffer[++i] = '\n';
+		win->buffer[++i] = '\n';
 	}
 }
 
-void	displayFrame(Frame *frame)
+void	renderWindow(Window *win)
 {
-	memset(frame->buffer, 0, frame->buffer_size - OVERHEAD_SIZE);
-	fillFrameBuffer(frame);
-	write(1, frame->buffer - OVERHEAD_START_SIZE, frame->buffer_size);
+	fillWindowBuffer(win);
+	write(1, win->buffer - OVERHEAD_START_SIZE, win->buffer_size);
+	memset(win->buffer, 0, win->buffer_size - OVERHEAD_SIZE);
+	clearImage((Image *)win);
 }
 
-Image	*createImage(const size_t width, const size_t height, const int *src)
+Image	initImage(const size_t width, const size_t height)
 {
-	int	*pixels = calloc(width * height, sizeof(int));
-
-	if (src)
-		memcpy(pixels, src, width * height * sizeof(int));
-
-	Image	*ret = malloc(sizeof(Image));
-	memcpy(ret, &((Image){
-		.pixels = pixels,
+	return ((Image){
+		.pixels = calloc(width * height, sizeof(Pixel_t)),
 		.size = {width, height},
-	}), sizeof(Image));
-	return (ret);
+	});
 }
 
 void	destroyImage(Image *image)
 {
 	free(image->pixels);
-	free(image);
 }
 
-void	putImageInFrame(const Image *image, Frame *target, const size_t x, const size_t y)
+Pixel_t	getPixel(const size_t x, const size_t y, Image *img)
 {
-	for (size_t j = 0; j < image->size[1]; ++j)
-		memcpy(&target->pixels[(y + j) * target->size[0] + x], &image->pixels[image->size[0] * j], image->size[0] * sizeof(int));
+	return (img->pixels[x + y * img->size[0]]);
 }
 
-Image	*strToNewImage(const char *str, const size_t width, const size_t height, const int color)
+void	setPixel(const size_t x, const size_t y, Pixel_t value, Image *img)
 {
-	int	*pixels = calloc(width * height, sizeof(int));
-	int	i = -1;
+	img->pixels[x + y * img->size[0]] = value;
+}
 
-	while (str[++i])
+void	clearImage(Image *img)
+{
+	memset(img->pixels, 0, img->size[0] * img->size[1] * sizeof(Pixel_t));
+}
+
+void	imageToWindow(const Image *img, Window *win, const size_t x, const size_t y)
+{
+	for (size_t j = 0; j < img->size[1]; ++j)
+		memcpy(&win->content.pixels[(y + j) * win->content.size[0] + x], &img->pixels[img->size[0] * j], img->size[0] * sizeof(Pixel_t));
+}
+
+Image	strToImage(const char *str, const size_t width, const size_t height, const Pixel_t color)
+{
+	Pixel_t	*pixels = calloc(width * height, sizeof(Pixel_t));
+
+	for (int i = 0; str[i]; ++i)
 		if (str[i] != ' ' && str[i] != '0')
 			pixels[i] = color;
 
-	Image	*ret = malloc(sizeof(Image));
-	memcpy(ret, &((Image){
+	return ((Image){
 		.pixels = pixels,
 		.size = {width, height},
-	}), sizeof(Image));
-	return (ret);
+	});
 }
