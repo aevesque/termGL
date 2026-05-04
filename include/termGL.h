@@ -14,7 +14,7 @@
 # define ERASE_DISPLAY		CSI "J"
 # define RESET_COLOR		CSI "0m"
 
-# define INIT_DISPLAY_SEQ	SCROLL_DOWN
+# define INIT_DISPLAY_SEQ	SCROLL_DOWN TWO_ROW_COLOR("0;0;0", "0;0;0")
 # define INIT_DISPLAY_SEQ_SIZE	(sizeof(INIT_DISPLAY_SEQ) - 1)
 
 # define OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
@@ -28,15 +28,18 @@
 # define PIXEL_STR	"▄"	//unicode lower half block, 0xE2 0x96 0x84
 # define PIXEL_SIZE	(sizeof(PIXEL_STR) - 1)
 
-# define TOP_ROW_COLOR		"48;2;"
-# define BOT_ROW_COLOR		"38;2;"
+# define TOP_ROW_COLOR_SEQ(rgb)		"48;2;" rgb
+# define BOT_ROW_COLOR_SEQ(rgb)		"38;2;" rgb
 # define COLOR_SEQ_END		"m"
 
-# define FULL_ROW_COLOR_SEQ(rgb1, rgb2)	CSI TOP_ROW_COLOR rgb1 ";" BOT_ROW_COLOR rgb2 COLOR_SEQ_END
-# define FULL_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(FULL_ROW_COLOR_SEQ("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
+# define TOP_ROW_COLOR(rgb)		CSI TOP_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
+# define BOT_ROW_COLOR(rgb)		CSI BOT_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
 
-# define HALF_ROW_COLOR_SEQ(rgb)		FULL_ROW_COLOR_SEQ(rgb, "0;0;0")
-# define HALF_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(HALF_ROW_COLOR_SEQ("rrr;ggg;bbb")) - 1)
+# define TWO_ROW_COLOR(rgb1, rgb2)	CSI TOP_ROW_COLOR_SEQ(rgb1) ";" BOT_ROW_COLOR_SEQ(rgb2) COLOR_SEQ_END
+# define TWO_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TWO_ROW_COLOR("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
+
+# define ONE_ROW_COLOR(rgb)		TOP_ROW_COLOR(rgb)
+# define ONE_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TOP_ROW_COLOR("rrr;ggg;bbb")) - 1)
 
 # define Pixel_t	int
 
@@ -61,7 +64,6 @@ typedef struct {
 typedef struct {
 	Image	content;
 	char	* const buffer;
-	const size_t	buffer_size;
 }		Window;
 
 void	initDisplay(void);

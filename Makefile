@@ -1,7 +1,7 @@
 NAME=termGL.a
 
 CC=cc
-CFLAGS=
+CFLAGS= -O
 
 RM=rm -rf
 
