@@ -144,3 +144,32 @@ Image	strToImage(const char *str, const unsigned int width, const unsigned int h
 		.size = {width, height},
 	});
 }
+
+#define ABS(val)	(val < 0 ? (val) * -1 : val)
+/* Bresenham's line algorithm */
+void	drawLine(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, const Pixel_t color, Image *dest)
+{
+	const int	dx = ABS((int)(x1 - x));
+	const int	dy = -ABS((int)(y1 - y));
+	const int	step_x = (x1 > x ? 1 : -1);
+	const int	step_y = (y1 > y ? 1 : -1);
+	int	err = dy + dx;
+	int	err2;
+
+	while (x != x1 || y != y1)
+	{
+		setPixel(x, y, color, dest);
+		err2 = 2 * err;
+		if (err2 >= dy)
+		{
+			err += dy;
+			x += step_x;
+		}
+		if (err2 <= dx)
+		{
+			err += dx;
+			y += step_y;
+		}
+	}
+	setPixel(x, y, color, dest);
+}

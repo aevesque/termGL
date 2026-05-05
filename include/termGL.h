@@ -85,4 +85,6 @@ void	imageToWindow(const Image *img, Window *win, const unsigned int x, const un
 /* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty -> black */
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color);
 
+void	drawLine(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, const Pixel_t color, Image *dest);
+
 #endif
