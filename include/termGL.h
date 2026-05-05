@@ -41,7 +41,7 @@
 # define ONE_ROW_COLOR(rgb)		TOP_ROW_COLOR(rgb)
 # define ONE_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TOP_ROW_COLOR("rrr;ggg;bbb")) - 1)
 
-# define Pixel_t	int
+# define Pixel_t	unsigned int
 
 # define RED		0xFF0000
 # define GREEN		0x00FF00
@@ -54,7 +54,7 @@
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
-	const size_t	size[2];
+	const unsigned int	size[2];
 }		Image;
 
 /* Special kind of Image containing the pixels to be displayed on screen.
@@ -68,21 +68,21 @@ typedef struct {
 
 void	initDisplay(void);
 
-Window	initWindow(const size_t width, const size_t height);
+Window	initWindow(const unsigned int width, const unsigned int height);
 void	destroyWindow(Window *win);
 
 void	renderWindow(Window *win);
 
-Image	initImage(const size_t width, const size_t height);
+Image	initImage(const unsigned int width, const unsigned int height);
 void	destroyImage(Image *img);
 
-Pixel_t	getPixel(const size_t x, const size_t y, Image *img);
-void	setPixel(const size_t x, const size_t y, Pixel_t value, Image *img);
+Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img);
+void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img);
 
 void	clearImage(Image *img);
-void	imageToWindow(const Image *img, Window *win, const size_t x, const size_t y);
+void	imageToWindow(const Image *img, Window *win, const unsigned int x, const unsigned int y);
 
 /* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty -> black */
-Image	strToImage(const char *str, const size_t width, const size_t height, const Pixel_t color);
+Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color);
 
 #endif
