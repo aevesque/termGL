@@ -14,7 +14,7 @@
 # define ERASE_DISPLAY		CSI "J"
 # define RESET_COLOR		CSI "0m"
 
-# define INIT_DISPLAY_SEQ	SCROLL_DOWN TWO_ROW_COLOR("0;0;0", "0;0;0")
+# define INIT_DISPLAY_SEQ	SCROLL_DOWN
 # define INIT_DISPLAY_SEQ_SIZE	(sizeof(INIT_DISPLAY_SEQ) - 1)
 
 # define OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
@@ -25,11 +25,11 @@
 
 # define OVERHEAD_SIZE	(OVERHEAD_START_SIZE + OVERHEAD_END_SIZE)
 
-# define PIXEL_STR	"▄"	//unicode lower half block, 0xE2 0x96 0x84
+# define PIXEL_STR	"▀"	//unicode upper half block, 0xE2 0x96 0x80
 # define PIXEL_SIZE	(sizeof(PIXEL_STR) - 1)
 
-# define TOP_ROW_COLOR_SEQ(rgb)		"48;2;" rgb
-# define BOT_ROW_COLOR_SEQ(rgb)		"38;2;" rgb
+# define TOP_ROW_COLOR_SEQ(rgb)		"38;2;" rgb
+# define BOT_ROW_COLOR_SEQ(rgb)		"48;2;" rgb
 # define COLOR_SEQ_END		"m"
 
 # define TOP_ROW_COLOR(rgb)		CSI TOP_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
@@ -48,6 +48,7 @@
 # define BLUE		0x0000FF
 # define WHITE		0xFFFFFF
 # define BLACK		0x000000
+# define UNDEFINED_PIXEL	-1
 
 # define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
 
