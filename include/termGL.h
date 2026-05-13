@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #ifndef TERM_GL
 # define TERM_GL
@@ -52,6 +53,8 @@
 
 # define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
 
+#define TERMGL_ABS(val)	(val < 0 ? (val) * -1 : val)
+
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
@@ -86,6 +89,28 @@ void	imageToWindow(const Image *img, Window *win, const unsigned int x, const un
 /* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty -> black */
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color);
 
-void	drawLine(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, const Pixel_t color, Image *dest);
+typedef struct {
+	float	x;
+	float	y;
+	float	z;
+}	Point;
+
+float	degToRad(const float deg);
+
+/* rotates a point around the origin on the specified axis */
+Point	rotateX(Point p, float angle_deg);
+Point	rotateY(Point p, float angle_deg);
+Point	rotateZ(Point p, float angle_deg);
+
+/* Absolute coordinate point */
+typedef struct {
+	unsigned int	x;
+	unsigned int	y;
+}	Point2D;
+
+/* convert a Point using relative coordinates (-1 - +1) to a Point2D in absolute coordinates (0 - img->width and 0 - img->height) */
+Point2D	toAbsolute(Point p, Image *img);
+
+void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest);
 
 #endif

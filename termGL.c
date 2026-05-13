@@ -149,31 +149,88 @@ Image	strToImage(const char *str, const unsigned int width, const unsigned int h
 	});
 }
 
-#define ABS(val)	(val < 0 ? (val) * -1 : val)
-/* Bresenham's line algorithm */
-void	drawLine(unsigned int x, unsigned int y, unsigned int x1, unsigned int y1, const Pixel_t color, Image *dest)
+float	degToRad(const float deg) { return (deg * M_PI / 180); }
+
+/* unrolled matrix multiplication between Point p and x rotation matrix */
+Point	rotateX(Point p, float angle_deg)
 {
-	const int	dx = ABS((int)(x1 - x));
-	const int	dy = -ABS((int)(y1 - y));
-	const int	step_x = (x1 > x ? 1 : -1);
-	const int	step_y = (y1 > y ? 1 : -1);
+	if ((int)angle_deg == 0)
+		return (p);
+	const float	angle = degToRad(angle_deg);
+	const float	cos = cosf(angle);
+	const float	sin = sinf(angle);
+
+	return ((Point){
+		.x = p.x,
+		.y = cos * p.y - sin * p.z,
+		.z = sin * p.y + cos * p.z
+	});
+}
+
+/* unrolled matrix multiplication between Point p and y rotation matrix */
+Point	rotateY(Point p, float angle_deg)
+{
+	if ((int)angle_deg == 0)
+		return (p);
+	const float	angle = degToRad(angle_deg);
+	const float	cos = cosf(angle);
+	const float	sin = sinf(angle);
+
+	return ((Point){
+		.x = cos * p.x + sin * p.z,
+		.y = p.y,
+		.z = -sin * p.x + cos * p.z
+	});
+}
+
+/* unrolled matrix multiplication between Point p and z rotation matrix */
+Point	rotateZ(Point p, float angle_deg)
+{
+	if ((int)angle_deg == 0)
+		return (p);
+	const float	angle = degToRad(angle_deg);
+	const float	cos = cosf(angle);
+	const float	sin = sinf(angle);
+
+	return ((Point){
+		.x = cos * p.x - sin * p.y,
+		.y = sin * p.x + cos * p.y,
+		.z = p.z
+	});
+}
+
+Point2D	toAbsolute(Point p, Image *img)
+{
+	return ((Point2D){
+		.x = (p.x + 1) * (img->size[0] / 2),
+		.y = (p.y + 1) * (img->size[1] / 2)
+	});
+}
+
+/* Bresenham's line algorithm */
+void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
+{
+	const int	dx = TERMGL_ABS((int)(p1.x - p0.x));
+	const int	dy = -TERMGL_ABS((int)(p1.y - p0.y));
+	const int	step_x = (p1.x > p0.x ? 1 : -1);
+	const int	step_y = (p1.y > p0.y ? 1 : -1);
 	int	err = dy + dx;
 	int	err2;
 
-	while (x != x1 || y != y1)
+	while (p0.x != p1.x || p0.y != p1.y)
 	{
-		setPixel(x, y, color, dest);
+		setPixel(p0.x, p0.y, color, dest);
 		err2 = 2 * err;
 		if (err2 >= dy)
 		{
 			err += dy;
-			x += step_x;
+			p0.x += step_x;
 		}
 		if (err2 <= dx)
 		{
 			err += dx;
-			y += step_y;
+			p0.y += step_y;
 		}
 	}
-	setPixel(x, y, color, dest);
+	setPixel(p0.x, p0.y, color, dest);
 }
