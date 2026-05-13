@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdarg.h>
 
 #ifndef TERM_GL
 # define TERM_GL
@@ -113,4 +114,7 @@ Point2D	toAbsolute(Point p, Image *img);
 
 void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest);
 
+/* draws a line between each point and the next, wrapping back to p0 */
+#define	drawFace(color, img, p0, ...)	_drawFace(color, img, p0, __VA_ARGS__, p0)
+void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...); //this should not be called directly
 #endif

@@ -234,3 +234,21 @@ void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
 	}
 	setPixel(p0.x, p0.y, color, dest);
 }
+
+/* ! this should not be called directly ! use the drawFace macro with the same arguments */
+void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...)
+{
+	va_list	ap;
+	va_start(ap, p0);
+
+	Point2D	point = p0;
+	Point2D	next_point;
+
+	do {
+		next_point = va_arg(ap, Point2D);
+		drawLine(point, next_point, color, img);
+		point = next_point;
+	} while (memcmp(&point, &p0, sizeof(Point2D)));
+
+	va_end(ap);
+}
