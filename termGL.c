@@ -1,11 +1,8 @@
 #include "include/termGL.h"
 
-void	initDisplay(void)
-{
-	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
-}
+static Display		g_display = {0};
 
-Window	initWindow(const unsigned int width, const unsigned int height)
+void	initDisplay(const unsigned int width, const unsigned int height)
 {
 	const size_t	full_line_size = (TWO_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
 	const size_t	half_line_size = (ONE_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1 + (sizeof(RESET_COLOR) - 1);
@@ -14,91 +11,96 @@ Window	initWindow(const unsigned int width, const unsigned int height)
 	char	*buffer = malloc(buffer_size);
 
 	strcpy(buffer, OVERHEAD_START);
-	return ((Window) {
+	Display		initializer = {
 		.content = (Image) {
 			.pixels = calloc(width * height, sizeof(Pixel_t)),
 			.size = {width, height},
 		},
 		.buffer = buffer + OVERHEAD_START_SIZE,
-	});
+	};
+
+	memcpy(&g_display, &initializer, sizeof(Display));
+	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
 }
 
-void	destroyWindow(Window *win)
+void	destroyDisplay(void)
 {
-	free(win->content.pixels);
-	free(win->buffer - OVERHEAD_START_SIZE);
+	free(g_display.content.pixels);
+	free(g_display.buffer - OVERHEAD_START_SIZE);
 }
 
-static size_t	fillWindowBuffer(Window *win)
+Image	*displayAsImgPtr(void) { return ((Image *)&g_display); }
+
+static size_t	fillDisplayBuffer(Display *display)
 {
 	size_t i = 0;
 	Pixel_t	prev_top_pixel = UNDEFINED_PIXEL;
 	Pixel_t	prev_bot_pixel = UNDEFINED_PIXEL;
 
-	for (unsigned int y = 0; y < win->content.size[1] - 1; y += 2)
+	for (unsigned int y = 0; y < display->content.size[1] - 1; y += 2)
 	{
-		for (unsigned int x = 0; x < win->content.size[0]; ++x)
+		for (unsigned int x = 0; x < display->content.size[0]; ++x)
 		{
-			const Pixel_t	top_pixel = getPixel(x, y, (Image *)win);
-			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)win);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)display);
+			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)display);
 
 			const int	write_bot_pixel = (bot_pixel != prev_bot_pixel);
 			const int	write_top_pixel = (top_pixel != prev_top_pixel && top_pixel != bot_pixel);
 
 			if (write_bot_pixel && write_top_pixel)
 			{
-				i += sprintf(&win->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d") PIXEL_STR,
+				i += sprintf(&display->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d") PIXEL_STR,
 						PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
 				prev_top_pixel = top_pixel;
 				prev_bot_pixel = bot_pixel;
 			}
 			else if (write_top_pixel)
 			{
-				i += sprintf(&win->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
+				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
 						PIXEL_TO_RGB(top_pixel));
 				prev_top_pixel = top_pixel;
 			}
 			else if (write_bot_pixel)
 			{
-				i += sprintf(&win->buffer[i], BOT_ROW_COLOR("%d;%d;%d") "%s",
+				i += sprintf(&display->buffer[i], BOT_ROW_COLOR("%d;%d;%d") "%s",
 						PIXEL_TO_RGB(bot_pixel), (top_pixel == bot_pixel ? " " : PIXEL_STR));
 				prev_bot_pixel = bot_pixel;
 			}
 			else
-                               i += sprintf(&win->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
+                               i += sprintf(&display->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
 
 		}
-		win->buffer[i++] = '\n';
+		display->buffer[i++] = '\n';
 	}
-	if (win->content.size[1] & 1)
+	if (display->content.size[1] & 1)
 	{
-		const unsigned int	y = win->content.size[1] - 1;
+		const unsigned int	y = display->content.size[1] - 1;
 
-		i += sprintf(&win->buffer[i], RESET_COLOR);
+		i += sprintf(&display->buffer[i], RESET_COLOR);
 		prev_top_pixel = UNDEFINED_PIXEL;
-		for (unsigned int x = 0; x < win->content.size[0]; ++x)
+		for (unsigned int x = 0; x < display->content.size[0]; ++x)
 		{
-			const Pixel_t	top_pixel = getPixel(x, y, (Image *)win);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)display);
 
 			if (top_pixel == prev_top_pixel)
-				i += sprintf(&win->buffer[i], PIXEL_STR);
+				i += sprintf(&display->buffer[i], PIXEL_STR);
 			else
 			{
-				i += sprintf(&win->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
+				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
 						PIXEL_TO_RGB(top_pixel));
 				prev_top_pixel = top_pixel;
 			}
 		}
-		win->buffer[i++] = '\n';
+		display->buffer[i++] = '\n';
 	}
-	return (strcpy(&win->buffer[i], OVERHEAD_END), i + OVERHEAD_END_SIZE);
+	return (strcpy(&display->buffer[i], OVERHEAD_END), i + OVERHEAD_END_SIZE);
 }
 
-void	renderWindow(Window *win)
+void	renderDisplay(void)
 {
-	const size_t char_count = fillWindowBuffer(win);
-	write(1, win->buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
-	clearImage((Image *)win);
+	const size_t char_count = fillDisplayBuffer(&g_display);
+	write(1, g_display.buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
+	clearImage((Image *)&g_display);
 }
 
 Image	initImage(const unsigned int width, const unsigned int height)
@@ -129,10 +131,10 @@ void	clearImage(Image *img)
 	memset(img->pixels, 0, img->size[0] * img->size[1] * sizeof(Pixel_t));
 }
 
-void	imageToWindow(const Image *img, Window *win, const unsigned int x, const unsigned int y)
+void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y)
 {
 	for (unsigned int j = 0; j < img->size[1]; ++j)
-		memcpy(&win->content.pixels[(y + j) * win->content.size[0] + x], &img->pixels[img->size[0] * j], img->size[0] * sizeof(Pixel_t));
+		memcpy(&dest->pixels[(y + j) * dest->size[0] + x], &img->pixels[img->size[0] * j], img->size[0] * sizeof(Pixel_t));
 }
 
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color)

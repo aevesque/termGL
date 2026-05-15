@@ -63,20 +63,20 @@ typedef struct {
 }		Image;
 
 /* Special kind of Image containing the pixels to be displayed on screen.
-  Castable to Image.
-  Upon calling renderWindow(), the window's content get translated and put in buffer before being sent to stdout.
-  */
+  Can be used as an Image using the DISPLAY macro
+  Upon calling renderDisplay(), the display's content get translated and put in buffer before being sent to stdout. */
 typedef struct {
 	Image	content;
 	char	* const buffer;
-}		Window;
+}		Display;
 
-void	initDisplay(void);
+#define DISPLAY		(displayAsImgPtr())
 
-Window	initWindow(const unsigned int width, const unsigned int height);
-void	destroyWindow(Window *win);
+void	initDisplay(const unsigned int width, const unsigned int height);
+void	destroyDisplay(void);
 
-void	renderWindow(Window *win);
+Image	*displayAsImgPtr(void);
+void	renderDisplay(void);
 
 Image	initImage(const unsigned int width, const unsigned int height);
 void	destroyImage(Image *img);
@@ -85,7 +85,7 @@ Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img);
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img);
 
 void	clearImage(Image *img);
-void	imageToWindow(const Image *img, Window *win, const unsigned int x, const unsigned int y);
+void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y);
 
 /* fills every non empty pixel with color. Considers ' '(32) and '0'(48) empty -> black */
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color);
