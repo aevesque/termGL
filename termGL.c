@@ -31,6 +31,14 @@ void	destroyDisplay(void)
 
 Image	*displayAsImgPtr(void) { return ((Image *)&g_display); }
 
+void	setFramerate(const unsigned int frame_per_sec)
+{
+	g_display.framerate = frame_per_sec;
+	g_display.frametime = 1 * 1000000 / frame_per_sec;
+}
+
+int	getFramerate(void) { return (g_display.framerate); }
+
 static size_t	fillDisplayBuffer(Display *display)
 {
 	size_t i = 0;
@@ -99,8 +107,29 @@ static size_t	fillDisplayBuffer(Display *display)
 void	renderDisplay(void)
 {
 	const size_t char_count = fillDisplayBuffer(&g_display);
-	write(1, g_display.buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
+
 	clearImage((Image *)&g_display);
+
+	if (g_display.frametime != 0)
+	{
+		struct timeval	current_time;
+		gettimeofday(&current_time, NULL);
+
+		const useconds_t	elapsed_time = current_time.tv_usec - g_display.last_frame_t;
+
+		if (g_display.frametime > elapsed_time)
+			usleep(g_display.frametime - elapsed_time);
+	}
+
+	write(1, g_display.buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
+
+	if (g_display.frametime != 0)
+	{
+		struct timeval	current_time;
+		gettimeofday(&current_time, NULL);
+
+		g_display.last_frame_t = current_time.tv_usec;
+	}
 }
 
 Image	initImage(const unsigned int width, const unsigned int height)

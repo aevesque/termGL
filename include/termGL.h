@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdarg.h>
+#include <sys/time.h>
 
 #ifndef TERM_GL
 # define TERM_GL
@@ -68,6 +69,9 @@ typedef struct {
 typedef struct {
 	Image	content;
 	char	* const buffer;
+	int	framerate;
+	useconds_t	frametime;
+	useconds_t	last_frame_t;
 }		Display;
 
 #define DISPLAY		(displayAsImgPtr())
@@ -76,6 +80,10 @@ void	initDisplay(const unsigned int width, const unsigned int height);
 void	destroyDisplay(void);
 
 Image	*displayAsImgPtr(void);
+
+void	setFramerate(const unsigned int frame_per_sec);
+int	getFramerate(void);
+
 void	renderDisplay(void);
 
 Image	initImage(const unsigned int width, const unsigned int height);
