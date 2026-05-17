@@ -55,6 +55,9 @@
 
 # define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
 
+# define PIXEL_CHAR_OFFSET	3 * 8
+# define PIXEL_CHAR_MARKER	(128 << PIXEL_CHAR_OFFSET)
+
 #define TERMGL_ABS(val)	(val < 0 ? (val) * -1 : val)
 
 /* Fixed-size 2d pixel buffer. */
@@ -125,4 +128,9 @@ void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest);
 /* draws a line between each point and the next, wrapping back to p0 */
 #define	drawFace(color, img, p0, ...)	_drawFace(color, img, p0, __VA_ARGS__, p0)
 void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...); //this should not be called directly
+
+/* draw characters instead of pixels
+ Text wraps around lines
+ Text is always 2 pixel tall and gets drawn on even y (y - 1 if y is odd)*/
+void	textPut(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img);
 #endif

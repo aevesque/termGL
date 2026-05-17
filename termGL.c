@@ -57,26 +57,29 @@ static size_t	fillDisplayBuffer(Display *display)
 
 			if (write_bot_pixel && write_top_pixel)
 			{
-				i += sprintf(&display->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d") PIXEL_STR,
-						PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
+				i += sprintf(&display->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d"), PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
 				prev_top_pixel = top_pixel;
 				prev_bot_pixel = bot_pixel;
 			}
 			else if (write_top_pixel)
 			{
-				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
-						PIXEL_TO_RGB(top_pixel));
+				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(top_pixel));
 				prev_top_pixel = top_pixel;
 			}
 			else if (write_bot_pixel)
 			{
-				i += sprintf(&display->buffer[i], BOT_ROW_COLOR("%d;%d;%d") "%s",
-						PIXEL_TO_RGB(bot_pixel), (top_pixel == bot_pixel ? " " : PIXEL_STR));
+				i += sprintf(&display->buffer[i], BOT_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(bot_pixel));
 				prev_bot_pixel = bot_pixel;
 			}
-			else
-                               i += sprintf(&display->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
 
+			if (top_pixel & PIXEL_CHAR_MARKER)
+			{
+				i += sprintf(&display->buffer[i], "%c", (top_pixel & (127 << PIXEL_CHAR_OFFSET)) >> PIXEL_CHAR_OFFSET);
+				prev_top_pixel &= 0xFFFFFF;//remove PIXEL_CHAR_MARKER if present
+				prev_bot_pixel &= 0XFFFFFF;
+			}
+			else
+				i += sprintf(&display->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
 		}
 		display->buffer[i++] = '\n';
 	}
@@ -282,4 +285,20 @@ void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...)
 	} while (memcmp(&point, &p0, sizeof(Point2D)));
 
 	va_end(ap);
+}
+
+void	textPut(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img)
+{
+	if (y & 1)
+		y -= 1;
+	for (int i = 0; str[i]; ++i)
+	{
+		setPixel(x, y, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
+		setPixel(x, y + 1, bg_color, img);
+		if (++x > img->size[0])
+		{
+			x = 0;
+			y += 2;
+		}
+	}
 }
