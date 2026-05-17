@@ -2,6 +2,7 @@
 
 static Display		g_display = {0};
 
+//TODO rename ? this is the init for the whole library
 void	initDisplay(const unsigned int width, const unsigned int height)
 {
 	const size_t	full_line_size = (TWO_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
