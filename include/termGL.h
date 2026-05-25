@@ -5,6 +5,8 @@
 #include <math.h>
 #include <stdarg.h>
 #include <sys/time.h>
+#include <fcntl.h>
+#include <termios.h>
 
 #ifndef TERM_GL
 # define TERM_GL
@@ -60,6 +62,8 @@
 
 #define TERMGL_ABS(val)	(val < 0 ? (val) * -1 : val)
 
+#define INPUT_QUEUE_SIZE	20
+
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
@@ -75,6 +79,8 @@ typedef struct {
 	int	framerate;
 	useconds_t	frametime;
 	useconds_t	last_frame_t;
+	void	(*input_handler)(char, void *);
+	void	*handler_context;
 }		Display;
 
 #define DISPLAY		(displayAsImgPtr())
@@ -86,6 +92,13 @@ Image	*displayAsImgPtr(void);
 
 void	setFramerate(const unsigned int frame_per_sec);
 int	getFramerate(void);
+
+/* supported inputs are ascii characters ; escaped sequences (F1 - F12, arrow keys etc) are not supported
+  input handler will get called with the detected keypress as it's first argument and handler_context as it's second argument */
+void	registerInputHandler(void (*handler)(char, void *), void *handler_context);
+/* registering an input handler changes the terminal state beyond the program's scope.
+  In most cases this is handled by termGL in the cleanup but in case of crash or when cleanup cannot happen call this fonction*/
+void	restoreTerminalState(void);
 
 void	renderDisplay(void);
 

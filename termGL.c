@@ -27,6 +27,8 @@ void	destroyDisplay(void)
 {
 	free(g_display.content.pixels);
 	free(g_display.buffer - OVERHEAD_START_SIZE);
+	if (g_display.input_handler != NULL)
+		restoreTerminalState();
 }
 
 Image	*displayAsImgPtr(void) { return ((Image *)&g_display); }
@@ -38,6 +40,40 @@ void	setFramerate(const unsigned int frame_per_sec)
 }
 
 int	getFramerate(void) { return (g_display.framerate); }
+
+void	registerInputHandler(void (*handler)(char, void *), void *handler_context)
+{
+	g_display.input_handler = handler;
+	g_display.handler_context = handler_context;
+
+	//setting terminal state
+	struct termios tcattr;
+	tcgetattr(STDIN_FILENO, &tcattr);
+	tcattr.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tcattr);
+
+	fcntl(0, F_SETFL, O_NONBLOCK);
+}
+
+void	restoreTerminalState(void)
+{
+	struct termios tcattr;
+	tcgetattr(STDIN_FILENO, &tcattr);
+	tcattr.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tcattr);
+}
+
+static void	processInputs(void)
+{
+	char	buffer[INPUT_QUEUE_SIZE] = {0};
+	int	read_amount;
+
+	do {
+		read_amount = read(0, buffer, INPUT_QUEUE_SIZE);
+		for (int i = 0; i < read_amount; ++i)
+			g_display.input_handler(buffer[i], g_display.handler_context);
+	} while (read_amount == INPUT_QUEUE_SIZE);
+}
 
 static size_t	fillDisplayBuffer(Display *display)
 {
@@ -133,6 +169,9 @@ void	renderDisplay(void)
 
 		g_display.last_frame_t = current_time.tv_usec;
 	}
+
+	if (g_display.input_handler != NULL)
+		processInputs();
 }
 
 Image	initImage(const unsigned int width, const unsigned int height)
