@@ -22,9 +22,9 @@ unsigned int	getFramerate(TermGL termGL);
 /* supported inputs are ascii characters ; escaped sequences (F1 - F12, arrow keys etc) are not supported
   input handler will get called with the detected keypress as it's first argument and handler_context as it's second argument */
 void	registerInputHandler(void (*handler)(char, void *), void *handler_context, TermGL termGL);
-/* registering an input handler changes the terminal state beyond the program's scope. Calling termGLDestroy will revert the terminal to a usable state
+/* registering an input handler changes the terminal state beyond the program's scope. Calling termGLDestroy will revert the terminal to it's previous state
   On crash, most modern terminal automatically revert themselves to a known safe state ; if this isn't the case this fonction needs to be called */
-void	restoreTerminalState(void);
+void	restoreTerminalState(TermGL termgl);
 
 void	renderDisplay(TermGL termGL);
 

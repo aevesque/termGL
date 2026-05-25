@@ -52,6 +52,7 @@ struct s_termgl {
 	useconds_t	last_frame_t;
 	void	(*input_handler)(char, void *);
 	void	*handler_context;
+	struct termios	starting_term_state;
 };
 
 TermGL	termGLInit(const unsigned int width, const unsigned int height)
@@ -82,7 +83,7 @@ void	termGLDestroy(TermGL termGL)
 	free(termGL->content.pixels);
 	free(termGL->buffer - OVERHEAD_START_SIZE);
 	if (termGL->input_handler != NULL)
-		restoreTerminalState();
+		restoreTerminalState(termGL);
 	free(termGL);
 }
 
@@ -103,20 +104,17 @@ void	registerInputHandler(void (*handler)(char, void *), void *handler_context, 
 	termGL->handler_context = handler_context;
 
 	//setting terminal state
-	struct termios tcattr;
-	tcgetattr(STDIN_FILENO, &tcattr);
+	tcgetattr(STDIN_FILENO, &termGL->starting_term_state);
+	struct termios tcattr = termGL->starting_term_state;
 	tcattr.c_lflag &= ~(ICANON | ECHO);
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tcattr);
 
 	fcntl(0, F_SETFL, O_NONBLOCK);
 }
 
-void	restoreTerminalState(void)
+void	restoreTerminalState(TermGL termGL)
 {
-	struct termios tcattr;
-	tcgetattr(STDIN_FILENO, &tcattr);
-	tcattr.c_lflag &= ~(ICANON | ECHO);
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tcattr);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &termGL->starting_term_state);
 }
 
 static void	processInputs(TermGL termGL)
