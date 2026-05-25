@@ -11,42 +11,27 @@
 #ifndef TERM_GL
 # define TERM_GL
 
-/* CSI is used to start some ANSI console codes ; see console_codes(4) */
-# define CSI	"\033["
+typedef struct s_termgl	*TermGL;
 
-# define SCROLL_DOWN		CSI "2J"
-# define CURSOR_TO_ORIGIN	CSI "H"
-# define ERASE_DISPLAY		CSI "J"
-# define RESET_COLOR		CSI "0m"
+TermGL	termGLInit(const unsigned int width, const unsigned int height);
+void	termGLDestroy(TermGL termGL);
 
-# define INIT_DISPLAY_SEQ	SCROLL_DOWN
-# define INIT_DISPLAY_SEQ_SIZE	(sizeof(INIT_DISPLAY_SEQ) - 1)
+void	setFramerate(const unsigned int frame_per_sec, TermGL termGL);
+unsigned int	getFramerate(TermGL termGL);
 
-# define OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
-# define OVERHEAD_START_SIZE	(sizeof(OVERHEAD_START) - 1)
+/* supported inputs are ascii characters ; escaped sequences (F1 - F12, arrow keys etc) are not supported
+  input handler will get called with the detected keypress as it's first argument and handler_context as it's second argument */
+void	registerInputHandler(void (*handler)(char, void *), void *handler_context, TermGL termGL);
+/* registering an input handler changes the terminal state beyond the program's scope. Calling termGLDestroy will revert the terminal to a usable state
+  On crash, most modern terminal automatically revert themselves to a known safe state ; if this isn't the case this fonction needs to be called */
+void	restoreTerminalState(void);
 
-# define OVERHEAD_END		RESET_COLOR
-# define OVERHEAD_END_SIZE	(sizeof(OVERHEAD_END) - 1)
-
-# define OVERHEAD_SIZE	(OVERHEAD_START_SIZE + OVERHEAD_END_SIZE)
+void	renderDisplay(TermGL termGL);
 
 # define PIXEL_STR	"▀"	//unicode upper half block, 0xE2 0x96 0x80
 # define PIXEL_SIZE	(sizeof(PIXEL_STR) - 1)
 
-# define TOP_ROW_COLOR_SEQ(rgb)		"38;2;" rgb
-# define BOT_ROW_COLOR_SEQ(rgb)		"48;2;" rgb
-# define COLOR_SEQ_END		"m"
-
-# define TOP_ROW_COLOR(rgb)		CSI TOP_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
-# define BOT_ROW_COLOR(rgb)		CSI BOT_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
-
-# define TWO_ROW_COLOR(rgb1, rgb2)	CSI TOP_ROW_COLOR_SEQ(rgb1) ";" BOT_ROW_COLOR_SEQ(rgb2) COLOR_SEQ_END
-# define TWO_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TWO_ROW_COLOR("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
-
-# define ONE_ROW_COLOR(rgb)		TOP_ROW_COLOR(rgb)
-# define ONE_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TOP_ROW_COLOR("rrr;ggg;bbb")) - 1)
-
-# define Pixel_t	unsigned int
+typedef unsigned int Pixel_t;
 
 # define RED		0xFF0000
 # define GREEN		0x00FF00
@@ -55,52 +40,14 @@
 # define BLACK		0x000000
 # define UNDEFINED_PIXEL	-1
 
-# define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
-
-# define PIXEL_CHAR_OFFSET	3 * 8
-# define PIXEL_CHAR_MARKER	(128 << PIXEL_CHAR_OFFSET)
-
-#define TERMGL_ABS(val)	(val < 0 ? (val) * -1 : val)
-
-#define INPUT_QUEUE_SIZE	20
-
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
 	const unsigned int	size[2];
 }		Image;
 
-/* Special kind of Image containing the pixels to be displayed on screen.
-  Can be used as an Image using the DISPLAY macro
-  Upon calling renderDisplay(), the display's content get translated and put in buffer before being sent to stdout. */
-typedef struct {
-	Image	content;
-	char	* const buffer;
-	int	framerate;
-	useconds_t	frametime;
-	useconds_t	last_frame_t;
-	void	(*input_handler)(char, void *);
-	void	*handler_context;
-}		Display;
-
-#define DISPLAY		(displayAsImgPtr())
-
-void	initDisplay(const unsigned int width, const unsigned int height);
-void	destroyDisplay(void);
-
-Image	*displayAsImgPtr(void);
-
-void	setFramerate(const unsigned int frame_per_sec);
-int	getFramerate(void);
-
-/* supported inputs are ascii characters ; escaped sequences (F1 - F12, arrow keys etc) are not supported
-  input handler will get called with the detected keypress as it's first argument and handler_context as it's second argument */
-void	registerInputHandler(void (*handler)(char, void *), void *handler_context);
-/* registering an input handler changes the terminal state beyond the program's scope.
-  In most cases this is handled by termGL in the cleanup but in case of crash or when cleanup cannot happen call this fonction*/
-void	restoreTerminalState(void);
-
-void	renderDisplay(void);
+/* use the DISPLAY macro to directly write to the display instead of an image */
+#define DISPLAY(termGL)		((Image *)termGL)
 
 Image	initImage(const unsigned int width, const unsigned int height);
 void	destroyImage(Image *img);
@@ -118,14 +65,14 @@ typedef struct {
 	float	x;
 	float	y;
 	float	z;
-}	Point;
+}	Point3D;
 
 float	degToRad(const float deg);
 
 /* rotates a point around the origin on the specified axis */
-Point	rotateX(Point p, float angle_deg);
-Point	rotateY(Point p, float angle_deg);
-Point	rotateZ(Point p, float angle_deg);
+Point3D	rotateX(Point3D p, float angle_deg);
+Point3D	rotateY(Point3D p, float angle_deg);
+Point3D	rotateZ(Point3D p, float angle_deg);
 
 /* Absolute coordinate point */
 typedef struct {
@@ -133,17 +80,17 @@ typedef struct {
 	unsigned int	y;
 }	Point2D;
 
-/* convert a Point using relative coordinates (-1 - +1) to a Point2D in absolute coordinates (0 - img->width and 0 - img->height) */
-Point2D	toAbsolute(Point p, Image *img);
+/* convert a Point3D using relative coordinates (-1 - +1) to a Point2D in absolute coordinates (0 - img->width and 0 - img->height) */
+Point2D	toAbsolute(Point3D p, Image *img);
 
 void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest);
 
 /* draws a line between each point and the next, wrapping back to p0 */
-#define	drawFace(color, img, p0, ...)	_drawFace(color, img, p0, __VA_ARGS__, p0)
-void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...); //this should not be called directly
+#define	drawFace(color, img, p0, ...)	drawFace_internal(color, img, p0, __VA_ARGS__, p0)
+void	drawFace_internal(const Pixel_t color, Image *img, Point2D p0, ...); //this should not be called directly
 
 /* draw characters instead of pixels
  Text wraps around lines
  Text is always 2 pixel tall and gets drawn on even y (y - 1 if y is odd)*/
-void	textPut(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img);
+void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img);
 #endif

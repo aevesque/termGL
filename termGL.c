@@ -1,50 +1,106 @@
 #include "include/termGL.h"
 
-static Display		g_display = {0};
+/* CSI is used to start some ANSI console codes ; see console_codes(4) */
+# define CSI	"\033["
 
-void	initDisplay(const unsigned int width, const unsigned int height)
+# define SCROLL_DOWN		CSI "2J"
+# define CURSOR_TO_ORIGIN	CSI "H"
+# define ERASE_DISPLAY		CSI "J"
+# define RESET_COLOR		CSI "0m"
+
+# define INIT_DISPLAY_SEQ	SCROLL_DOWN
+# define INIT_DISPLAY_SEQ_SIZE	(sizeof(INIT_DISPLAY_SEQ) - 1)
+
+# define OVERHEAD_START		CURSOR_TO_ORIGIN ERASE_DISPLAY
+# define OVERHEAD_START_SIZE	(sizeof(OVERHEAD_START) - 1)
+
+# define OVERHEAD_END		RESET_COLOR
+# define OVERHEAD_END_SIZE	(sizeof(OVERHEAD_END) - 1)
+
+# define OVERHEAD_SIZE	(OVERHEAD_START_SIZE + OVERHEAD_END_SIZE)
+
+# define TOP_ROW_COLOR_SEQ(rgb)		"38;2;" rgb
+# define BOT_ROW_COLOR_SEQ(rgb)		"48;2;" rgb
+# define COLOR_SEQ_END		"m"
+
+# define TOP_ROW_COLOR(rgb)		CSI TOP_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
+# define BOT_ROW_COLOR(rgb)		CSI BOT_ROW_COLOR_SEQ(rgb) COLOR_SEQ_END
+
+# define TWO_ROW_COLOR(rgb1, rgb2)	CSI TOP_ROW_COLOR_SEQ(rgb1) ";" BOT_ROW_COLOR_SEQ(rgb2) COLOR_SEQ_END
+# define TWO_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TWO_ROW_COLOR("rrr;ggg;bbb", "rrr;ggg;bbb")) - 1)
+
+# define ONE_ROW_COLOR(rgb)		TOP_ROW_COLOR(rgb)
+# define ONE_ROW_COLOR_SEQ_MAX_SIZE	(sizeof(TOP_ROW_COLOR("rrr;ggg;bbb")) - 1)
+
+# define PIXEL_TO_RGB(pix)		(pix & RED) >> 16, (pix & GREEN) >> 8, pix & BLUE
+
+# define PIXEL_CHAR_OFFSET	3 * 8
+# define PIXEL_CHAR_MARKER	(128 << PIXEL_CHAR_OFFSET)
+
+#define INPUT_QUEUE_SIZE	20
+
+#define ABS(val)	(val < 0 ? (val) * -1 : val)
+
+/* Special kind of Image containing the pixels to be displayed on screen.
+  Can be used as an Image using the DISPLAY macro
+  Upon calling renderDisplay(), the underlying image gets translated and put into a buffer of char before being sent to stdout. */
+struct s_termgl {
+	Image	content;
+	char	* const buffer;
+	int	framerate;
+	useconds_t	timestep;
+	useconds_t	last_frame_t;
+	void	(*input_handler)(char, void *);
+	void	*handler_context;
+};
+
+TermGL	termGLInit(const unsigned int width, const unsigned int height)
 {
 	const size_t	full_line_size = (TWO_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1;
 	const size_t	half_line_size = (ONE_ROW_COLOR_SEQ_MAX_SIZE + PIXEL_SIZE) * width + 1 + (sizeof(RESET_COLOR) - 1);
 
 	const size_t	buffer_size = full_line_size * (height / 2) + half_line_size * (height % 2) + OVERHEAD_SIZE;
 	char	*buffer = malloc(buffer_size);
+	TermGL	ret = malloc(sizeof(struct s_termgl));
 
 	strcpy(buffer, OVERHEAD_START);
-	Display		initializer = {
+
+	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
+
+	struct s_termgl	initializer = {
 		.content = (Image) {
 			.pixels = calloc(width * height, sizeof(Pixel_t)),
 			.size = {width, height},
 		},
 		.buffer = buffer + OVERHEAD_START_SIZE,
 	};
-
-	memcpy(&g_display, &initializer, sizeof(Display));
-	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
+	return (memcpy(ret, &initializer, sizeof(struct s_termgl)));
 }
 
-void	destroyDisplay(void)
+void	termGLDestroy(TermGL termGL)
 {
-	free(g_display.content.pixels);
-	free(g_display.buffer - OVERHEAD_START_SIZE);
-	if (g_display.input_handler != NULL)
+	free(termGL->content.pixels);
+	free(termGL->buffer - OVERHEAD_START_SIZE);
+	if (termGL->input_handler != NULL)
 		restoreTerminalState();
+	free(termGL);
 }
 
-Image	*displayAsImgPtr(void) { return ((Image *)&g_display); }
-
-void	setFramerate(const unsigned int frame_per_sec)
+void	setFramerate(const unsigned int frame_per_sec, TermGL termGL)
 {
-	g_display.framerate = frame_per_sec;
-	g_display.frametime = 1 * 1000000 / frame_per_sec;
+	termGL->framerate = frame_per_sec;
+	termGL->timestep = 1 * 1000000 / frame_per_sec;
 }
 
-int	getFramerate(void) { return (g_display.framerate); }
-
-void	registerInputHandler(void (*handler)(char, void *), void *handler_context)
+unsigned int	getFramerate(TermGL termGL)
 {
-	g_display.input_handler = handler;
-	g_display.handler_context = handler_context;
+	return (termGL->framerate);
+}
+
+void	registerInputHandler(void (*handler)(char, void *), void *handler_context, TermGL termGL)
+{
+	termGL->input_handler = handler;
+	termGL->handler_context = handler_context;
 
 	//setting terminal state
 	struct termios tcattr;
@@ -63,7 +119,7 @@ void	restoreTerminalState(void)
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &tcattr);
 }
 
-static void	processInputs(void)
+static void	processInputs(TermGL termGL)
 {
 	char	buffer[INPUT_QUEUE_SIZE] = {0};
 	int	read_amount;
@@ -71,107 +127,105 @@ static void	processInputs(void)
 	do {
 		read_amount = read(0, buffer, INPUT_QUEUE_SIZE);
 		for (int i = 0; i < read_amount; ++i)
-			g_display.input_handler(buffer[i], g_display.handler_context);
+			termGL->input_handler(buffer[i], termGL->handler_context);
 	} while (read_amount == INPUT_QUEUE_SIZE);
 }
 
-static size_t	fillDisplayBuffer(Display *display)
+static size_t	fillDisplayBuffer(TermGL termGL)
 {
 	size_t i = 0;
 	Pixel_t	prev_top_pixel = UNDEFINED_PIXEL;
 	Pixel_t	prev_bot_pixel = UNDEFINED_PIXEL;
 
-	for (unsigned int y = 0; y < display->content.size[1] - 1; y += 2)
+	for (unsigned int y = 0; y < termGL->content.size[1] - 1; y += 2)
 	{
-		for (unsigned int x = 0; x < display->content.size[0]; ++x)
+		for (unsigned int x = 0; x < termGL->content.size[0]; ++x)
 		{
-			const Pixel_t	top_pixel = getPixel(x, y, (Image *)display);
-			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)display);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)termGL);
+			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)termGL);
 
 			const int	write_bot_pixel = (bot_pixel != prev_bot_pixel);
 			const int	write_top_pixel = (top_pixel != prev_top_pixel && top_pixel != bot_pixel);
 
 			if (write_bot_pixel && write_top_pixel)
 			{
-				i += sprintf(&display->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d"), PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
+				i += sprintf(&termGL->buffer[i], TWO_ROW_COLOR("%d;%d;%d", "%d;%d;%d"), PIXEL_TO_RGB(top_pixel), PIXEL_TO_RGB(bot_pixel));
 				prev_top_pixel = top_pixel;
 				prev_bot_pixel = bot_pixel;
 			}
 			else if (write_top_pixel)
 			{
-				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(top_pixel));
+				i += sprintf(&termGL->buffer[i], TOP_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(top_pixel));
 				prev_top_pixel = top_pixel;
 			}
 			else if (write_bot_pixel)
 			{
-				i += sprintf(&display->buffer[i], BOT_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(bot_pixel));
+				i += sprintf(&termGL->buffer[i], BOT_ROW_COLOR("%d;%d;%d"), PIXEL_TO_RGB(bot_pixel));
 				prev_bot_pixel = bot_pixel;
 			}
 
 			if (top_pixel & PIXEL_CHAR_MARKER)
 			{
-				i += sprintf(&display->buffer[i], "%c", (top_pixel & (127 << PIXEL_CHAR_OFFSET)) >> PIXEL_CHAR_OFFSET);
+				i += sprintf(&termGL->buffer[i], "%c", (top_pixel & (127 << PIXEL_CHAR_OFFSET)) >> PIXEL_CHAR_OFFSET);
 				prev_top_pixel &= 0xFFFFFF;//remove PIXEL_CHAR_MARKER if present
 				prev_bot_pixel &= 0XFFFFFF;
 			}
 			else
-				i += sprintf(&display->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
+				i += sprintf(&termGL->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
 		}
-		display->buffer[i++] = '\n';
+		termGL->buffer[i++] = '\n';
 	}
-	if (display->content.size[1] & 1)
+	if (termGL->content.size[1] & 1)
 	{
-		const unsigned int	y = display->content.size[1] - 1;
+		const unsigned int	y = termGL->content.size[1] - 1;
 
-		i += sprintf(&display->buffer[i], RESET_COLOR);
+		i += sprintf(&termGL->buffer[i], RESET_COLOR);
 		prev_top_pixel = UNDEFINED_PIXEL;
-		for (unsigned int x = 0; x < display->content.size[0]; ++x)
+		for (unsigned int x = 0; x < termGL->content.size[0]; ++x)
 		{
-			const Pixel_t	top_pixel = getPixel(x, y, (Image *)display);
+			const Pixel_t	top_pixel = getPixel(x, y, (Image *)termGL);
 
 			if (top_pixel == prev_top_pixel)
-				i += sprintf(&display->buffer[i], PIXEL_STR);
+				i += sprintf(&termGL->buffer[i], PIXEL_STR);
 			else
 			{
-				i += sprintf(&display->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
+				i += sprintf(&termGL->buffer[i], TOP_ROW_COLOR("%d;%d;%d") PIXEL_STR,
 						PIXEL_TO_RGB(top_pixel));
 				prev_top_pixel = top_pixel;
 			}
 		}
-		display->buffer[i++] = '\n';
+		termGL->buffer[i++] = '\n';
 	}
-	return (strcpy(&display->buffer[i], OVERHEAD_END), i + OVERHEAD_END_SIZE);
+	return (strcpy(&termGL->buffer[i], OVERHEAD_END), i + OVERHEAD_END_SIZE);
 }
 
-void	renderDisplay(void)
+static useconds_t	getCurrentTime(void)
 {
-	const size_t char_count = fillDisplayBuffer(&g_display);
+	struct timeval	current_time;
+	gettimeofday(&current_time, NULL);
+	return (current_time.tv_usec);
+}
 
-	clearImage((Image *)&g_display);
+void	renderDisplay(TermGL termGL)
+{
+	const size_t char_count = fillDisplayBuffer(termGL);
+	clearImage((Image *)termGL);
 
-	if (g_display.frametime != 0)
+	if (termGL->timestep != 0)
 	{
-		struct timeval	current_time;
-		gettimeofday(&current_time, NULL);
+		const useconds_t	elapsed_time = getCurrentTime() - termGL->last_frame_t;
 
-		const useconds_t	elapsed_time = current_time.tv_usec - g_display.last_frame_t;
-
-		if (g_display.frametime > elapsed_time)
-			usleep(g_display.frametime - elapsed_time);
+		if (termGL->timestep > elapsed_time)
+			usleep(termGL->timestep - elapsed_time);
 	}
 
-	write(1, g_display.buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
+	write(1, termGL->buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
 
-	if (g_display.frametime != 0)
-	{
-		struct timeval	current_time;
-		gettimeofday(&current_time, NULL);
+	if (termGL->timestep != 0)
+		termGL->last_frame_t = getCurrentTime();
 
-		g_display.last_frame_t = current_time.tv_usec;
-	}
-
-	if (g_display.input_handler != NULL)
-		processInputs();
+	if (termGL->input_handler != NULL)
+		processInputs(termGL);
 }
 
 Image	initImage(const unsigned int width, const unsigned int height)
@@ -224,8 +278,8 @@ Image	strToImage(const char *str, const unsigned int width, const unsigned int h
 
 float	degToRad(const float deg) { return (deg * M_PI / 180); }
 
-/* unrolled matrix multiplication between Point p and x rotation matrix */
-Point	rotateX(Point p, float angle_deg)
+/* unrolled matrix multiplication between Point3D p and x rotation matrix */
+Point3D	rotateX(Point3D p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -233,15 +287,15 @@ Point	rotateX(Point p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point){
+	return ((Point3D){
 		.x = p.x,
 		.y = cos * p.y - sin * p.z,
 		.z = sin * p.y + cos * p.z
 	});
 }
 
-/* unrolled matrix multiplication between Point p and y rotation matrix */
-Point	rotateY(Point p, float angle_deg)
+/* unrolled matrix multiplication between Point3D p and y rotation matrix */
+Point3D	rotateY(Point3D p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -249,15 +303,15 @@ Point	rotateY(Point p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point){
+	return ((Point3D){
 		.x = cos * p.x + sin * p.z,
 		.y = p.y,
 		.z = -sin * p.x + cos * p.z
 	});
 }
 
-/* unrolled matrix multiplication between Point p and z rotation matrix */
-Point	rotateZ(Point p, float angle_deg)
+/* unrolled matrix multiplication between Point3D p and z rotation matrix */
+Point3D	rotateZ(Point3D p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -265,14 +319,14 @@ Point	rotateZ(Point p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point){
+	return ((Point3D){
 		.x = cos * p.x - sin * p.y,
 		.y = sin * p.x + cos * p.y,
 		.z = p.z
 	});
 }
 
-Point2D	toAbsolute(Point p, Image *img)
+Point2D	toAbsolute(Point3D p, Image *img)
 {
 	return ((Point2D){
 		.x = (p.x + 1) * (img->size[0] / 2),
@@ -283,8 +337,8 @@ Point2D	toAbsolute(Point p, Image *img)
 /* Bresenham's line algorithm */
 void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
 {
-	const int	dx = TERMGL_ABS((int)(p1.x - p0.x));
-	const int	dy = -TERMGL_ABS((int)(p1.y - p0.y));
+	const int	dx = ABS((int)(p1.x - p0.x));
+	const int	dy = -ABS((int)(p1.y - p0.y));
 	const int	step_x = (p1.x > p0.x ? 1 : -1);
 	const int	step_y = (p1.y > p0.y ? 1 : -1);
 	int	err = dy + dx;
@@ -309,7 +363,7 @@ void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
 }
 
 /* ! this should not be called directly ! use the drawFace macro with the same arguments */
-void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...)
+void	drawFace_internal(const Pixel_t color, Image *img, Point2D p0, ...)
 {
 	va_list	ap;
 	va_start(ap, p0);
@@ -326,7 +380,7 @@ void	_drawFace(const Pixel_t color, Image *img, Point2D p0, ...)
 	va_end(ap);
 }
 
-void	textPut(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img)
+void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img)
 {
 	if (y & 1)
 		y -= 1;
