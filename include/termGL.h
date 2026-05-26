@@ -43,10 +43,11 @@ typedef unsigned int Pixel_t;
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
+	unsigned int * const zbuffer;
 	const unsigned int	size[2];
 }		Image;
 
-/* use the DISPLAY macro to directly write to the display instead of an image */
+/* use the DISPLAY macro in functions requiring an Image * to directly write to the display instead of an image */
 #define DISPLAY(termGL)		((Image *)termGL)
 
 Image	initImage(const unsigned int width, const unsigned int height);
@@ -54,6 +55,8 @@ void	destroyImage(Image *img);
 
 Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img);
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img);
+/* only place a pixel if z is lower than the zbuffer value for this pixel */
+void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, Pixel_t value, Image *img);
 
 void	clearImage(Image *img);
 void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y);

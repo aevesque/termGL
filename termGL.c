@@ -39,7 +39,11 @@
 
 #define INPUT_QUEUE_SIZE	20
 
+#define MIN_ZBUF_VALUE	0
+#define MAX_ZBUF_VALUE	1000
+
 #define ABS(val)	(val < 0 ? (val) * -1 : val)
+#define MAX(a, b)	(a > b ? a : b)
 
 /* Special kind of Image containing the pixels to be displayed on screen.
   Can be used as an Image using the DISPLAY macro
@@ -69,10 +73,7 @@ TermGL	termGLInit(const unsigned int width, const unsigned int height)
 	write(1, INIT_DISPLAY_SEQ, INIT_DISPLAY_SEQ_SIZE);
 
 	struct s_termgl	initializer = {
-		.content = (Image) {
-			.pixels = calloc(width * height, sizeof(Pixel_t)),
-			.size = {width, height},
-		},
+		.content = initImage(width, height),
 		.buffer = buffer + OVERHEAD_START_SIZE,
 	};
 	return (memcpy(ret, &initializer, sizeof(struct s_termgl)));
@@ -80,7 +81,7 @@ TermGL	termGLInit(const unsigned int width, const unsigned int height)
 
 void	termGLDestroy(TermGL termGL)
 {
-	free(termGL->content.pixels);
+	destroyImage(&termGL->content);
 	free(termGL->buffer - OVERHEAD_START_SIZE);
 	if (termGL->input_handler != NULL)
 		restoreTerminalState(termGL);
@@ -229,6 +230,7 @@ Image	initImage(const unsigned int width, const unsigned int height)
 {
 	return ((Image){
 		.pixels = calloc(width * height, sizeof(Pixel_t)),
+		.zbuffer = calloc(width * height, sizeof(unsigned int)),
 		.size = {width, height},
 	});
 }
@@ -236,6 +238,7 @@ Image	initImage(const unsigned int width, const unsigned int height)
 void	destroyImage(Image *image)
 {
 	free(image->pixels);
+	free(image->zbuffer);
 }
 
 Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img)
@@ -248,9 +251,19 @@ void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *
 	img->pixels[x + y * img->size[0]] = value;
 }
 
+/* only place a pixel if z is lower than the zbuffer value for this pixel */
+void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, Pixel_t value, Image *img)
+{
+	if (z > img->zbuffer[x + y * img->size[0]] && !(img->zbuffer[x + y * img->size[0]] == 0 && getPixel(x, y, img) == BLACK))
+		return ;
+	img->pixels[x + y * img->size[0]] = value;
+	img->zbuffer[x + y * img->size[0]] = z;
+}
+
 void	clearImage(Image *img)
 {
 	memset(img->pixels, 0, img->size[0] * img->size[1] * sizeof(Pixel_t));
+	memset(img->zbuffer, 0, img->size[0] * img->size[1] * sizeof(unsigned int));
 }
 
 void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y)
@@ -328,35 +341,33 @@ uintVec3	toAbsolute(fVec3 p, Image *img)
 	return ((uintVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
+		.z = (p.z + 1) * (MAX_ZBUF_VALUE / 2),
 	});
 }
 
-/* Bresenham's line algorithm */
+/* 3D Bresenham's line algorithm */
 void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest)
 {
 	const int	dx = ABS((int)(p1.x - p0.x));
-	const int	dy = -ABS((int)(p1.y - p0.y));
+	const int	dy = ABS((int)(p1.y - p0.y));
+	const int	dz = ABS((int)(p1.z - p0.z));
+	const int	dmax = MAX(dx, dy);
+
 	const int	step_x = (p1.x > p0.x ? 1 : -1);
 	const int	step_y = (p1.y > p0.y ? 1 : -1);
-	int	err = dy + dx;
-	int	err2;
+	const int	step_z = (p1.z > p0.z ? 1 : -1);
 
-	while (p0.x != p1.x || p0.y != p1.y)
+	int	err_x = dmax / 2;
+	int	err_y = err_x;
+	int	err_z = err_x;
+
+	for(int i = dmax; i >= 0; --i)
 	{
-		setPixel(p0.x, p0.y, color, dest);
-		err2 = 2 * err;
-		if (err2 >= dy)
-		{
-			err += dy;
-			p0.x += step_x;
-		}
-		if (err2 <= dx)
-		{
-			err += dx;
-			p0.y += step_y;
-		}
+		setPixelZBuffered(p0.x, p0.y, p0.z, color, dest);
+		err_x -= dx; if (err_x < 0) { err_x += dmax; p0.x += step_x; }
+		err_y -= dy; if (err_y < 0) { err_y += dmax; p0.y += step_y; }
+		err_z -= dz; if (err_z < 0) { err_z += dmax; p0.z += step_z; }
 	}
-	setPixel(p0.x, p0.y, color, dest);
 }
 
 /* ! this should not be called directly ! use the drawFace macro with the same arguments */
@@ -383,8 +394,8 @@ void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font
 		y -= 1;
 	for (int i = 0; str[i]; ++i)
 	{
-		setPixel(x, y, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
-		setPixel(x, y + 1, bg_color, img);
+		setPixelZBuffered(x, y, MIN_ZBUF_VALUE, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
+		setPixelZBuffered(x, y + 1, MIN_ZBUF_VALUE, bg_color, img);
 		if (++x > img->size[0])
 		{
 			x = 0;
