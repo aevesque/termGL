@@ -143,7 +143,7 @@ static size_t	fillDisplayBuffer(TermGL termGL)
 			const Pixel_t	bot_pixel = getPixel(x, y + 1, (Image *)termGL);
 
 			const int	write_bot_pixel = (bot_pixel != prev_bot_pixel);
-			const int	write_top_pixel = (top_pixel != prev_top_pixel && top_pixel != bot_pixel);
+			const int	write_top_pixel = ((top_pixel & 0xFFFFFF) != prev_top_pixel && top_pixel != bot_pixel);
 
 			if (write_bot_pixel && write_top_pixel)
 			{
@@ -166,7 +166,6 @@ static size_t	fillDisplayBuffer(TermGL termGL)
 			{
 				i += sprintf(&termGL->buffer[i], "%c", (top_pixel & (127 << PIXEL_CHAR_OFFSET)) >> PIXEL_CHAR_OFFSET);
 				prev_top_pixel &= 0xFFFFFF;//remove PIXEL_CHAR_MARKER if present
-				prev_bot_pixel &= 0XFFFFFF;
 			}
 			else
 				i += sprintf(&termGL->buffer[i], (top_pixel == bot_pixel ? " " : PIXEL_STR));
