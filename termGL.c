@@ -276,8 +276,8 @@ Image	strToImage(const char *str, const unsigned int width, const unsigned int h
 
 float	degToRad(const float deg) { return (deg * M_PI / 180); }
 
-/* unrolled matrix multiplication between Point3D p and x rotation matrix */
-Point3D	rotateX(Point3D p, float angle_deg)
+/* unrolled matrix multiplication between point p and x rotation matrix */
+fVec3	rotateX(fVec3 p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -285,15 +285,15 @@ Point3D	rotateX(Point3D p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point3D){
+	return ((fVec3){
 		.x = p.x,
 		.y = cos * p.y - sin * p.z,
 		.z = sin * p.y + cos * p.z
 	});
 }
 
-/* unrolled matrix multiplication between Point3D p and y rotation matrix */
-Point3D	rotateY(Point3D p, float angle_deg)
+/* unrolled matrix multiplication between point p and y rotation matrix */
+fVec3	rotateY(fVec3 p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -301,15 +301,15 @@ Point3D	rotateY(Point3D p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point3D){
+	return ((fVec3){
 		.x = cos * p.x + sin * p.z,
 		.y = p.y,
 		.z = -sin * p.x + cos * p.z
 	});
 }
 
-/* unrolled matrix multiplication between Point3D p and z rotation matrix */
-Point3D	rotateZ(Point3D p, float angle_deg)
+/* unrolled matrix multiplication between point p and z rotation matrix */
+fVec3	rotateZ(fVec3 p, float angle_deg)
 {
 	if ((int)angle_deg == 0)
 		return (p);
@@ -317,23 +317,23 @@ Point3D	rotateZ(Point3D p, float angle_deg)
 	const float	cos = cosf(angle);
 	const float	sin = sinf(angle);
 
-	return ((Point3D){
+	return ((fVec3){
 		.x = cos * p.x - sin * p.y,
 		.y = sin * p.x + cos * p.y,
 		.z = p.z
 	});
 }
 
-Point2D	toAbsolute(Point3D p, Image *img)
+uintVec3	toAbsolute(fVec3 p, Image *img)
 {
-	return ((Point2D){
+	return ((uintVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
-		.y = (p.y + 1) * (img->size[1] / 2)
+		.y = (p.y + 1) * (img->size[1] / 2),
 	});
 }
 
 /* Bresenham's line algorithm */
-void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
+void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest)
 {
 	const int	dx = ABS((int)(p1.x - p0.x));
 	const int	dy = -ABS((int)(p1.y - p0.y));
@@ -361,19 +361,19 @@ void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest)
 }
 
 /* ! this should not be called directly ! use the drawFace macro with the same arguments */
-void	drawFace_internal(const Pixel_t color, Image *img, Point2D p0, ...)
+void	drawFace_internal(const Pixel_t color, Image *img, uintVec3 p0, ...)
 {
 	va_list	ap;
 	va_start(ap, p0);
 
-	Point2D	point = p0;
-	Point2D	next_point;
+	uintVec3	point = p0;
+	uintVec3	next_point;
 
 	do {
-		next_point = va_arg(ap, Point2D);
+		next_point = va_arg(ap, uintVec3);
 		drawLine(point, next_point, color, img);
 		point = next_point;
-	} while (memcmp(&point, &p0, sizeof(Point2D)));
+	} while (memcmp(&point, &p0, sizeof(uintVec3)));
 
 	va_end(ap);
 }

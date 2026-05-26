@@ -65,29 +65,29 @@ typedef struct {
 	float	x;
 	float	y;
 	float	z;
-}	Point3D;
+}	fVec3;
 
 float	degToRad(const float deg);
 
 /* rotates a point around the origin on the specified axis */
-Point3D	rotateX(Point3D p, float angle_deg);
-Point3D	rotateY(Point3D p, float angle_deg);
-Point3D	rotateZ(Point3D p, float angle_deg);
+fVec3	rotateX(fVec3 p, float angle_deg);
+fVec3	rotateY(fVec3 p, float angle_deg);
+fVec3	rotateZ(fVec3 p, float angle_deg);
 
-/* Absolute coordinate point */
 typedef struct {
 	unsigned int	x;
 	unsigned int	y;
-}	Point2D;
+	unsigned int	z;
+}	uintVec3;
 
-/* convert a Point3D using relative coordinates (-1 - +1) to a Point2D in absolute coordinates (0 - img->width and 0 - img->height) */
-Point2D	toAbsolute(Point3D p, Image *img);
+/* convert a fVec3 using relative coordinates (-1 - +1) to a uintVec3 in absolute coordinates (0 - img->width and 0 - img->height) */
+uintVec3	toAbsolute(fVec3 p, Image *img);
 
-void	drawLine(Point2D p0, Point2D p1, const Pixel_t color, Image *dest);
+void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest);
 
 /* draws a line between each point and the next, wrapping back to p0 */
 #define	drawFace(color, img, p0, ...)	drawFace_internal(color, img, p0, __VA_ARGS__, p0)
-void	drawFace_internal(const Pixel_t color, Image *img, Point2D p0, ...); //this should not be called directly
+void	drawFace_internal(const Pixel_t color, Image *img, uintVec3 p0, ...); //this should not be called directly
 
 /* draw characters instead of pixels
  Text wraps around lines
