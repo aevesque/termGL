@@ -380,8 +380,7 @@ void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest)
 	}
 }
 
-/* ! this should not be called directly ! use the drawFace macro with the same arguments */
-void	drawFace_internal(const Pixel_t color, Image *img, uintVec3 p0, ...)
+void	drawPath(const Pixel_t color, Image *img, uintVec3 p0, ...)
 {
 	va_list	ap;
 	va_start(ap, p0);
