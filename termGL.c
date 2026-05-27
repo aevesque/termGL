@@ -39,8 +39,8 @@
 
 #define INPUT_QUEUE_SIZE	20
 
-#define MIN_ZBUF_VALUE	0
-#define MAX_ZBUF_VALUE	1000
+#define ZBUF_NOTINIT	0
+#define ZBUF_TEXT_LAYER	1
 
 #define ABS(val)	(val < 0 ? (val) * -1 : val)
 #define MAX(a, b)	(a > b ? a : b)
@@ -264,7 +264,7 @@ void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *
 /* only place a pixel if z is lower than the zbuffer value for this pixel */
 void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, Pixel_t value, Image *img)
 {
-	if (z > img->zbuffer[x + y * img->size[0]] && !(img->zbuffer[x + y * img->size[0]] == 0 && getPixel(x, y, img) == BLACK))
+	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT && z > img->zbuffer[x + y * img->size[0]])
 		return ;
 	img->pixels[x + y * img->size[0]] = value;
 	img->zbuffer[x + y * img->size[0]] = z;
@@ -351,7 +351,7 @@ uintVec3	toAbsolute(fVec3 p, Image *img)
 	return ((uintVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
-		.z = (p.z + 1) * (MAX_ZBUF_VALUE / 2),
+		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
 	});
 }
 
@@ -404,8 +404,8 @@ void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font
 		y -= 1;
 	for (int i = 0; str[i]; ++i)
 	{
-		setPixelZBuffered(x, y, MIN_ZBUF_VALUE, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
-		setPixelZBuffered(x, y + 1, MIN_ZBUF_VALUE, bg_color, img);
+		setPixelZBuffered(x, y, ZBUF_TEXT_LAYER, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
+		setPixelZBuffered(x, y + 1, ZBUF_TEXT_LAYER, bg_color, img);
 		if (++x > img->size[0])
 		{
 			x = 0;

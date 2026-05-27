@@ -56,6 +56,9 @@ typedef struct {
 Image	initImage(const unsigned int width, const unsigned int height);
 void	destroyImage(Image *img);
 
+#define ZBUF_MIN_VALUE	2
+#define ZBUF_AMPLITUDE	1000
+
 Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img);
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img);
 /* only place a pixel if z is lower than the zbuffer value for this pixel */
