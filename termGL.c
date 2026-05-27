@@ -88,6 +88,16 @@ void	termGLDestroy(TermGL termGL)
 	free(termGL);
 }
 
+unsigned int	getDisplayWidth(TermGL termGL)
+{
+	return (termGL->content.size[0]);
+}
+
+unsigned int	getDisplayHeight(TermGL termGL)
+{
+	return (termGL->content.size[1]);
+}
+
 void	setFramerate(const unsigned int frame_per_sec, TermGL termGL)
 {
 	termGL->framerate = frame_per_sec;

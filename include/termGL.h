@@ -16,6 +16,9 @@ typedef struct s_termgl	*TermGL;
 TermGL	termGLInit(const unsigned int width, const unsigned int height);
 void	termGLDestroy(TermGL termGL);
 
+unsigned int	getDisplayWidth(TermGL termGL);
+unsigned int	getDisplayHeight(TermGL termGL);
+
 void	setFramerate(const unsigned int frame_per_sec, TermGL termGL);
 unsigned int	getFramerate(TermGL termGL);
 
