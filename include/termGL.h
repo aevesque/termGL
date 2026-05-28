@@ -43,6 +43,9 @@ typedef unsigned int Pixel_t;
 # define BLUE		0x0000FF
 # define WHITE		0xFFFFFF
 # define BLACK		0x000000
+# define YELLOW		0xFFFF00
+# define CYAN		0x00FFFF
+# define PINK		0xFF00FF
 # define UNDEFINED_PIXEL	-1
 
 #define ZBUF_MIN_VALUE	2
