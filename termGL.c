@@ -40,7 +40,6 @@
 #define INPUT_QUEUE_SIZE	20
 
 #define ZBUF_NOTINIT	0
-#define ZBUF_TEXT_LAYER	1
 
 #define ABS(val)	(val < 0 ? (val) * -1 : val)
 #define MAX(a, b)	(a > b ? a : b)
@@ -258,6 +257,8 @@ Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img)
 
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img)
 {
+	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT)
+		return ;
 	img->pixels[x + y * img->size[0]] = value;
 }
 
@@ -403,8 +404,8 @@ void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font
 		y -= 1;
 	for (int i = 0; str[i]; ++i)
 	{
-		setPixelZBuffered(x, y, ZBUF_TEXT_LAYER, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
-		setPixelZBuffered(x, y + 1, ZBUF_TEXT_LAYER, bg_color, img);
+		setPixelZBuffered(x, y, ALWAYS_ON_TOP, font_color | (str[i] << PIXEL_CHAR_OFFSET) | PIXEL_CHAR_MARKER, img);
+		setPixelZBuffered(x, y + 1, ALWAYS_ON_TOP, bg_color, img);
 		if (++x > img->size[0])
 		{
 			x = 0;
