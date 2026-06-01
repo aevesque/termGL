@@ -51,6 +51,9 @@ typedef unsigned int Pixel_t;
 #define ZBUF_MIN_VALUE	2
 #define ZBUF_AMPLITUDE	1000
 
+/* special zbuffer value */
+#define ALWAYS_ON_TOP	1
+
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
 	Pixel_t	* const	pixels;
@@ -109,6 +112,6 @@ void	drawPath(const Pixel_t color, Image *img, uintVec3 p0, ...);
 /* draws a line between each point and the next, wrapping back to p0 */
 #define	drawClosedPath(color, img, p0, ...)	drawPath(color, img, p0, __VA_ARGS__, p0)
 
-/* render an str instead of pixels. chars are 2 lines tall and are rendered on even lines only (line - 1 if line is odd) with a special zbuffer value as to always be on top */
+/* render an str instead of pixels. chars are 2 lines tall and are rendered on even lines only (line - 1 if line is odd) with the special zbuffer value ALWAYS_ON_TOP as to always be on top */
 void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img);
 #endif
