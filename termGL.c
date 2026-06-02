@@ -356,6 +356,15 @@ uintVec3	toAbsolute(fVec3 p, Image *img)
 	});
 }
 
+iVec3	toAbsoluteUnbound(fVec3 p, Image *img)
+{
+	return ((iVec3){
+		.x = (p.x + 1) * (img->size[0] / 2),
+		.y = (p.y + 1) * (img->size[1] / 2),
+		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
+	});
+}
+
 /* 3D Bresenham's line algorithm */
 void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest)
 {

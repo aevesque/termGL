@@ -104,6 +104,15 @@ typedef struct {
  to a uintVec3 in absolute coordinates (0 - img->width, 0 - img->height, ZBUF_MIN_VALUE - ZBUF_AMPLITUDE + ZBUF_MIN_VALUE) */
 uintVec3	toAbsolute(fVec3 p, Image *img);
 
+typedef struct {
+	int	x;
+	int	y;
+	int	z;
+}	iVec3;
+
+/* convert a fVec3 in relative coordinates without boundaries to an absolute coordinate (using the image size as a reference) without boundaries (see toAbsolute) */
+iVec3	toAbsoluteUnbound(fVec3 p, Image *img);
+
 void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest);
 
 /* draws a line between each point and the next */
