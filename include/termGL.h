@@ -23,6 +23,9 @@ unsigned int	getDisplayHeight(TermGL termGL);
 void	setFramerate(const unsigned int frame_per_sec, TermGL termGL);
 unsigned int	getFramerate(TermGL termGL);
 
+/* display an fps counter on the top left of the current frame based on the time to render and print the last frame */
+void	showFPS(TermGL termGL);
+
 /* supported inputs are ascii characters ; escaped sequences (F1 - F12, arrow keys etc) are not supported.
  input handler gets called with the detected keycode as first argument and handler_context as it's second argument */
 void	registerInputHandler(void (*handler)(char, void *), void *handler_context, TermGL termGL);
