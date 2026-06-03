@@ -52,6 +52,7 @@ struct s_termgl {
 	char	* const buffer;
 	int	framerate;
 	useconds_t	timestep;
+	useconds_t	measured_frametime;
 	useconds_t	last_frame_t;
 	void	(*input_handler)(char, void *);
 	void	*handler_context;
@@ -106,6 +107,17 @@ void	setFramerate(const unsigned int frame_per_sec, TermGL termGL)
 unsigned int	getFramerate(TermGL termGL)
 {
 	return (termGL->framerate);
+}
+
+void	showFPS(TermGL termGL)
+{
+	char	buffer[10];
+
+	if (!termGL->measured_frametime)
+		termGL->measured_frametime = 1; //approximation to avoid division by 0
+
+	sprintf(buffer, "%d", 1 * 1000000 / termGL->measured_frametime);
+	putText(buffer, 0, 0, GREEN, BLACK, DISPLAY(termGL));
 }
 
 void	registerInputHandler(void (*handler)(char, void *), void *handler_context, TermGL termGL)
@@ -218,18 +230,17 @@ void	renderDisplay(TermGL termGL)
 	const size_t char_count = fillDisplayBuffer(termGL);
 	clearImage((Image *)termGL);
 
-	if (termGL->timestep != 0)
-	{
-		const useconds_t	elapsed_time = getCurrentTime() - termGL->last_frame_t;
+	termGL->measured_frametime = getCurrentTime() - termGL->last_frame_t;
 
-		if (termGL->timestep > elapsed_time)
-			usleep(termGL->timestep - elapsed_time);
+	if (termGL->timestep > termGL->measured_frametime)
+	{
+		usleep(termGL->timestep - termGL->measured_frametime);
+		termGL->measured_frametime += termGL->timestep - termGL->measured_frametime;
 	}
 
 	write(1, termGL->buffer - OVERHEAD_START_SIZE, char_count + OVERHEAD_START_SIZE);
 
-	if (termGL->timestep != 0)
-		termGL->last_frame_t = getCurrentTime();
+	termGL->last_frame_t = getCurrentTime();
 
 	if (termGL->input_handler != NULL)
 		processInputs(termGL);
