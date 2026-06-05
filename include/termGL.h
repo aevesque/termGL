@@ -51,9 +51,6 @@ typedef unsigned int Pixel_t;
 # define PINK		0xFF00FF
 # define UNDEFINED_PIXEL	-1
 
-#define ZBUF_MIN_VALUE	2
-#define ZBUF_AMPLITUDE	1000
-
 /* special zbuffer value */
 #define ALWAYS_ON_TOP	1
 

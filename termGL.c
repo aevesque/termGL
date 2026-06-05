@@ -40,6 +40,8 @@
 #define INPUT_QUEUE_SIZE	20
 
 #define ZBUF_NOTINIT	0
+#define ZBUF_MIN	1
+#define ZBUF_SCALING_FACTOR	1000
 
 #define ABS(val)	(val < 0 ? (val) * -1 : val)
 #define MAX(a, b)	(a > b ? a : b)
@@ -266,11 +268,13 @@ Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img)
 	return (img->pixels[x + y * img->size[0]]);
 }
 
+//TODO	dilemma : override any pixel or set zbuf as you write and then you can't double write
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img)
 {
-	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT)
+	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT && img->zbuffer[x)
 		return ;
 	img->pixels[x + y * img->size[0]] = value;
+	//img->zbuffer[x + y * img->size[0]] = ZBUF_MAX;
 }
 
 /* only place a pixel if z is lower than the zbuffer value for this pixel */
@@ -279,7 +283,7 @@ void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigne
 	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT && z > img->zbuffer[x + y * img->size[0]])
 		return ;
 	img->pixels[x + y * img->size[0]] = value;
-	img->zbuffer[x + y * img->size[0]] = z;
+	img->zbuffer[x + y * img->size[0]] = z + ZBUF_MIN;
 }
 
 void	clearImage(Image *img)
@@ -291,7 +295,25 @@ void	clearImage(Image *img)
 void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y)
 {
 	for (unsigned int j = 0; j < img->size[1]; ++j)
+	{
 		memcpy(&dest->pixels[(y + j) * dest->size[0] + x], &img->pixels[img->size[0] * j], img->size[0] * sizeof(Pixel_t));
+		memcpy(&dest->zbuffer[(y + j) * dest->size[0] + x], &img->zbuffer[img->size[0] * j], img->size[0] * sizeof(unsigned int));
+	}
+}
+
+void	overlayImage(const Image *dest, const Image *src, const unsigned int x, const unsigned int y)
+{
+	for (unsigned int j = 0; j < src->size[1]; ++j)
+	{
+		for (unsigned int i = 0; i < src->size[0]; ++i)
+		{
+			if (src->zbuffer[j * src->size[0] + i] != ZBUF_NOTINIT)
+			{
+				dest->pixels[(j + y) * dest->size[0] + x + i] = src->pixels[j * src->size[0] + i];
+				dest->zbuffer[(j + y) * dest->size[0] + x + i] = src->zbuffer[j * src->size[0] + i];
+			}
+		}
+	}
 }
 
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color)
@@ -363,7 +385,7 @@ uintVec3	toAbsolute(fVec3 p, Image *img)
 	return ((uintVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
-		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
+		.z = (p.z + 1) * (ZBUF_SCALING_FACTOR) + ZBUF_MIN,
 	});
 }
 
@@ -372,7 +394,7 @@ iVec3	toAbsoluteUnbound(fVec3 p, Image *img)
 	return ((iVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
-		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
+		.z = (p.z + 1) * (ZBUF_SCALING_FACTOR) + ZBUF_MIN,
 	});
 }
 
