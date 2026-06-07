@@ -39,8 +39,6 @@
 
 #define INPUT_QUEUE_SIZE	20
 
-#define ZBUF_NOTINIT	0
-
 #define ABS(val)	(val < 0 ? (val) * -1 : val)
 #define MAX(a, b)	(a > b ? a : b)
 
@@ -248,9 +246,11 @@ void	renderDisplay(TermGL termGL)
 
 Image	initImage(const unsigned int width, const unsigned int height)
 {
+	const size_t	size = width * height;
+
 	return ((Image){
-		.pixels = calloc(width * height, sizeof(Pixel_t)),
-		.zbuffer = calloc(width * height, sizeof(unsigned int)),
+		.pixels = calloc(size, sizeof(Pixel_t)),
+		.zbuffer = memset(malloc(size * sizeof(unsigned int)), 0xFF, size * sizeof(unsigned int)),
 		.size = {width, height},
 	});
 }
@@ -261,51 +261,63 @@ void	destroyImage(Image *image)
 	free(image->zbuffer);
 }
 
-Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img)
+Pixel_t	getPixel(const unsigned int x, const unsigned int y, const Image *img)
 {
 	return (img->pixels[x + y * img->size[0]]);
 }
 
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img)
 {
-	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT)
+	if (getZbufValue(x, y, img) == ALWAYS_ON_TOP)
 		return ;
 	img->pixels[x + y * img->size[0]] = value;
+}
+
+unsigned int	getZbufValue(const unsigned int x, const unsigned int y, const Image *img)
+{
+	return (img->zbuffer[x + y * img->size[0]]);
+}
+
+void	setZbufValue(const unsigned int x, const unsigned int y, const unsigned int value, Image *img)
+{
+	img->zbuffer[x + y * img->size[0]] = value;
 }
 
 /* only place a pixel if z is lower than the zbuffer value for this pixel */
 void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, Pixel_t value, Image *img)
 {
-	if (img->zbuffer[x + y * img->size[0]] != ZBUF_NOTINIT && z > img->zbuffer[x + y * img->size[0]])
+	if (z > getZbufValue(x, y, img))
 		return ;
-	img->pixels[x + y * img->size[0]] = value;
-	img->zbuffer[x + y * img->size[0]] = z;
+	setPixel(x, y, value, img);
+	setZbufValue(x, y, z, img);
 }
 
 void	clearImage(Image *img)
 {
 	memset(img->pixels, 0, img->size[0] * img->size[1] * sizeof(Pixel_t));
-	memset(img->zbuffer, 0, img->size[0] * img->size[1] * sizeof(unsigned int));
+	memset(img->zbuffer, 0xFF, img->size[0] * img->size[1] * sizeof(unsigned int));
 }
 
-void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y)
+void	imageToImage(Image *dest, const Image *src, const unsigned int x, const unsigned int y)
 {
-	for (unsigned int j = 0; j < img->size[1]; ++j)
-		memcpy(&dest->pixels[(y + j) * dest->size[0] + x], &img->pixels[img->size[0] * j], img->size[0] * sizeof(Pixel_t));
+	for (unsigned int j = 0; j < src->size[1]; ++j)
+	{
+		memcpy(&dest->pixels[(y + j) * dest->size[0] + x], &src->pixels[src->size[0] * j], src->size[0] * sizeof(Pixel_t));
+		memcpy(&dest->zbuffer[(y + j) * dest->size[0] + x], &src->zbuffer[src->size[0] * j], src->size[0] * sizeof(unsigned int));
+	}
 }
 
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color)
 {
-	Pixel_t	*pixels = calloc(width * height, sizeof(Pixel_t));
+	Image	ret = initImage(width, height);
 
-	for (int i = 0; str[i]; ++i)
-		if (str[i] != ' ' && str[i] != '0')
-			pixels[i] = color;
-
-	return ((Image){
-		.pixels = pixels,
-		.size = {width, height},
-	});
+	for (size_t i = 0; str[i]; ++i)
+	{
+		if (str[i] == ' ' || str[i] == '0')
+			continue ;
+		ret.pixels[i] = color;
+	}
+	return (ret);
 }
 
 float	degToRad(const float deg) { return (deg * M_PI / 180); }
@@ -358,21 +370,21 @@ fVec3	rotateZ(fVec3 p, float angle_deg)
 	});
 }
 
-uintVec3	toAbsolute(fVec3 p, Image *img)
+uintVec3	toAbsolute(fVec3 p, const Image *img)
 {
 	return ((uintVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
-		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
+		.z = (p.z + 1) * (ZBUF_MAX / 2),
 	});
 }
 
-iVec3	toAbsoluteUnbound(fVec3 p, Image *img)
+iVec3	toAbsoluteUnbound(fVec3 p, const Image *img)
 {
 	return ((iVec3){
 		.x = (p.x + 1) * (img->size[0] / 2),
 		.y = (p.y + 1) * (img->size[1] / 2),
-		.z = (p.z + 1) * (ZBUF_AMPLITUDE / 2) + ZBUF_MIN_VALUE,
+		.z = (p.z + 1) * (ZBUF_MAX / 2),
 	});
 }
 

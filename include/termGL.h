@@ -51,11 +51,9 @@ typedef unsigned int Pixel_t;
 # define PINK		0xFF00FF
 # define UNDEFINED_PIXEL	-1
 
-#define ZBUF_MIN_VALUE	2
-#define ZBUF_AMPLITUDE	1000
-
-/* special zbuffer value */
-#define ALWAYS_ON_TOP	1
+/* special zbuffer values */
+# define ALWAYS_ON_TOP	0
+# define ZBUF_MAX	1000
 
 /* Fixed-size 2d pixel buffer. */
 typedef struct {
@@ -70,19 +68,22 @@ typedef struct {
 Image	initImage(const unsigned int width, const unsigned int height);
 void	destroyImage(Image *img);
 
-Pixel_t	getPixel(const unsigned int x, const unsigned int y, Image *img);
+Pixel_t	getPixel(const unsigned int x, const unsigned int y, const Image *img);
 void	setPixel(const unsigned int x, const unsigned int y, Pixel_t value, Image *img);
 
-/* only place a pixel if z is lower than or equal to the zbuffer value for this pixel
- pixels with a zbuffer value of 0 are excluded from this and have the lowest priority */
+/* higher values are further away */
+unsigned int	getZbufValue(const unsigned int x, const unsigned int y, const Image *img);
+void	setZbufValue(const unsigned int x, const unsigned int y, const unsigned int value, Image *img);
+
+/* only place a pixel if z is lower than or equal to the zbuffer value for this pixel */
 void	setPixelZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, Pixel_t value, Image *img);
 
 void	clearImage(Image *img);
 
 /* copy an image into another image ; can be used to display images by using the DISPLAY macro as dest */
-void	imageToImage(const Image *img, Image *dest, const unsigned int x, const unsigned int y);
+void	imageToImage(Image *dest, const Image *src, const unsigned int x, const unsigned int y);
 
-/* creates an image following the chars in the str. Every char create a color pixel except ' '(32) and '0'(48) wich are black */
+/* creates an image following the chars in the str.  Any char creates a color pixel except ' '(32) and '0'(48) wich are considered empty/black */
 Image	strToImage(const char *str, const unsigned int width, const unsigned int height, const Pixel_t color);
 
 typedef struct {
@@ -104,8 +105,8 @@ typedef struct {
 	unsigned int	z;
 }	uintVec3;
 
-/* convert a fVec3 in relative coordinates (-1 - +1) to a uintVec3 in absolute coordinates (0 - img->width, 0 - img->height, ZBUF_MIN_VALUE - ZBUF_AMPLITUDE + ZBUF_MIN_VALUE) */
-uintVec3	toAbsolute(fVec3 p, Image *img);
+/* convert a fVec3 in relative coordinates (-1 - +1) to a uintVec3 in absolute coordinates (0 - img->width, 0 - img->height, 0 - ZBUF_MAX) */
+uintVec3	toAbsolute(fVec3 p, const Image *img);
 
 typedef struct {
 	int	x;
@@ -114,7 +115,7 @@ typedef struct {
 }	iVec3;
 
 /* convert a fVec3 in relative coordinates without boundaries to an absolute coordinate (using the image size as a reference) without boundaries (see toAbsolute) */
-iVec3	toAbsoluteUnbound(fVec3 p, Image *img);
+iVec3	toAbsoluteUnbound(fVec3 p, const Image *img);
 
 void	drawLine(uintVec3 p0, uintVec3 p1, const Pixel_t color, Image *dest);
 
