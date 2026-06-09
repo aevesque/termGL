@@ -430,6 +430,20 @@ void	drawPath(const Pixel_t color, Image *img, uintVec3 p0, ...)
 	va_end(ap);
 }
 
+void	drawRect(const unsigned int x, const unsigned int y, const unsigned int width, const unsigned int height, const Pixel_t color, Image *img)
+{
+	for (unsigned int j = 0; j < height; ++j)
+		for (unsigned int i = 0; i < width; ++i)
+			setPixel(x + i, y + j, color, img);
+}
+
+void	drawRectZBuffered(const unsigned int x, const unsigned int y, const unsigned int z, const unsigned int width, const unsigned int height, const Pixel_t color, Image *img)
+{
+	for (unsigned int j = 0; j < height; ++j)
+		for (unsigned int i = 0; i < width; ++i)
+			setPixelZBuffered(x + i, y + j, z, color, img);
+}
+
 void	putText(const char *str, unsigned int x, unsigned int y, const Pixel_t font_color, const Pixel_t bg_color, Image *img)
 {
 	if (y & 1)
